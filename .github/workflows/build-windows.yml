@@ -1,0 +1,31 @@
+name: Build Windows Host
+
+on:
+  push:
+    branches: [main]
+    paths: ["windows-app/**", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish (self-contained single exe)
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: virtual-gamepad-windows
+          path: windows-app/publish/VirtualGamepadHost.exe

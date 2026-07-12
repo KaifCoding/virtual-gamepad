@@ -1,0 +1,37 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["android-app/**", ".github/workflows/build-android.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Scaffold native android/ project (safe to re-run)
+        run: flutter create --platforms=android --org com.virtualgamepad .
+
+      - name: Apply our AndroidManifest (permissions + orientation)
+        run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: virtual-gamepad-android
+          path: android-app/build/app/outputs/flutter-apk/app-release.apk

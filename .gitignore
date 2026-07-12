@@ -1,0 +1,22 @@
+# Flutter/Dart
+android-app/.dart_tool/
+android-app/.packages
+android-app/build/
+android-app/android/
+android-app/ios/
+android-app/linux/
+android-app/macos/
+android-app/windows/
+android-app/web/
+android-app/.flutter-plugins
+android-app/.flutter-plugins-dependencies
+android-app/pubspec.lock
+
+# .NET
+windows-app/bin/
+windows-app/obj/
+windows-app/publish/
+
+# OS
+.DS_Store
+Thumbs.db

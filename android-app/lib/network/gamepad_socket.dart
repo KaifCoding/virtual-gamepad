@@ -52,16 +52,57 @@ class GamepadSocket {
     _statusController.add(s);
   }
 
-  /// Broadcasts a DISCOVER packet on the local subnet. Call repeatedly
-  /// (e.g. every second) while the "searching" UI is open; discovered hosts
-  /// arrive via [discoveredStream].
+  /// Broadcasts a DISCOVER packet on every local IPv4 interface's subnet.
+  /// Sending only to 255.255.255.255 misses some phones/routers (dual
+  /// WiFi+mobile-data routing, some OEM network stacks), so we also compute
+  /// each interface's own directed broadcast address (e.g. 192.168.1.255)
+  /// and send there too. Call repeatedly (e.g. every second) while the
+  /// "searching" UI is open; discovered hosts arrive via [discoveredStream].
   Future<void> discover() async {
     await _ensureSocket();
     final packet = PacketBuilder.discover();
+
+    final targets = <String>{'255.255.255.255'};
     try {
-      _socket!.send(packet, InternetAddress('255.255.255.255'), Protocol.port);
+      for (final iface in await NetworkInterface.list(
+          includeLoopback: false, type: InternetAddressType.IPv4)) {
+        for (final addr in iface.addresses) {
+          final b = _directedBroadcastFor(addr.address);
+          if (b != null) targets.add(b);
+        }
+      }
     } catch (_) {
-      // Some networks/emulators reject broadcast; manual IP entry still works.
+      // NetworkInterface.list can fail on some devices/permissions setups;
+      // the global broadcast address above still gets tried.
+    }
+
+    for (final target in targets) {
+      try {
+        _socket!.send(packet, InternetAddress(target), Protocol.port);
+      } catch (_) {
+        // A given target may be unreachable; keep trying the others.
+      }
+    }
+  }
+
+  /// Assumes a /24 subnet (by far the most common on home/office WiFi) and
+  /// returns e.g. "192.168.1.255" for "192.168.1.37". Good-enough heuristic
+  /// without needing a plugin to read the real subnet mask.
+  String? _directedBroadcastFor(String ipv4) {
+    final parts = ipv4.split('.');
+    if (parts.length != 4) return null;
+    return '${parts[0]}.${parts[1]}.${parts[2]}.255';
+  }
+
+  /// Local IPv4 addresses of this phone, for troubleshooting UI ("make sure
+  /// this matches the PC's subnet").
+  Future<List<String>> localAddresses() async {
+    try {
+      final ifaces = await NetworkInterface.list(
+          includeLoopback: false, type: InternetAddressType.IPv4);
+      return [for (final i in ifaces) for (final a in i.addresses) a.address];
+    } catch (_) {
+      return [];
     }
   }
 

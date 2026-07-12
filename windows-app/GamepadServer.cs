@@ -79,6 +79,7 @@ public sealed class GamepadServer : IDisposable
         switch (type)
         {
             case Protocol.TypeDiscover:
+                Log?.Invoke($"Discovery request from {sender}");
                 SendDiscoverResponse(sender);
                 break;
 

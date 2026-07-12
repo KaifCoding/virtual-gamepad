@@ -51,8 +51,16 @@ class _GamepadScreenState extends State<GamepadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B0B),
-      body: SafeArea(
+      backgroundColor: const Color(0xFF0B0B14),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.4,
+            colors: [Color(0xFF1A1033), Color(0xFF0B0B14)],
+          ),
+        ),
+        child: SafeArea(
         child: Stack(
           children: [
             Row(
@@ -157,7 +165,7 @@ class _GamepadScreenState extends State<GamepadScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

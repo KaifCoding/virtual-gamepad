@@ -54,9 +54,10 @@ This repo builds both apps automatically and for free using GitHub Actions — y
 2. Open the **Actions** tab on your repo. Two workflows build automatically on every push:
    - *Build Android APK*
    - *Build Windows Host*
-3. Click into a finished (green ✅) run and download the artifact from the bottom of the page:
+3. Click into a finished (green ✅) run and download the artifacts from the bottom of the page:
    - `virtual-gamepad-android.zip` → contains `app-release.apk`
-   - `virtual-gamepad-windows.zip` → contains `VirtualGamepadHost.exe`
+   - `virtual-gamepad-windows-installer.zip` → contains `VirtualGamepadHost-Setup.exe` (**recommended** — proper install wizard, Start Menu + Desktop icons, uninstaller)
+   - `virtual-gamepad-windows-exe.zip` → contains the raw `VirtualGamepadHost.exe` if you'd rather not install anything (no shortcuts, no uninstaller — just a file you double-click)
 4. You can also trigger a build manually any time: **Actions → workflow name → Run workflow**.
 
 ### 📲 Install on your phone
@@ -66,14 +67,16 @@ Copy `app-release.apk` to your phone and tap it. Android will ask permission to 
 ### 🖥️ Set up your PC
 
 1. Install **[ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases/latest)** once — this is the driver that makes Windows see your phone as a real controller. Reboot if prompted.
-2. Run `VirtualGamepadHost.exe`. A branded window opens showing your PC's IP address(es) — that's what you'll enter (or auto-discover) from the phone. Click "Show connection log" to see live connection activity.
-3. Allow the app through **Windows Firewall** when prompted (check all network types — Domain, Private, *and* Public). If the prompt never appears, run [`windows-app/open-firewall-port.ps1`](windows-app/open-firewall-port.ps1) as Administrator to open the port manually.
+2. Run `VirtualGamepadHost-Setup.exe` and follow the wizard (tick "Create a desktop icon" if you want one — it's on by default). No admin rights needed; it installs to your user profile.
+3. **Windows SmartScreen will likely warn you** the first time — "Windows protected your PC." This is expected for any free/unsigned app (code-signing certificates cost money this project doesn't spend). Click **"More info" → "Run anyway"**. If it looked like the app "didn't open" before, this dismissed warning is almost always why — check you didn't just close the SmartScreen dialog itself.
+4. Launch **Virtual Gamepad Host** from the Start Menu or the desktop icon. The window shows your PC's IP address(es) — that's what you'll enter (or auto-discover) from the phone. Click "Show connection log" to see live connection activity.
+5. Allow the app through **Windows Firewall** when prompted (check all network types — Domain, Private, *and* Public). If the prompt never appears, run [`windows-app/open-firewall-port.ps1`](windows-app/open-firewall-port.ps1) as Administrator to open the port manually.
 
 ### 🔗 Connect
 
 1. Make sure your phone and PC are on the **same WiFi network**.
 2. Open the app — it searches automatically and lists your PC by name.
-3. Tap it to connect. If nothing shows up after a few seconds (see [Troubleshooting](#-troubleshooting)), type the IP shown in the PC's console window instead.
+3. Tap it to connect. If nothing shows up after a few seconds (see [Troubleshooting](#-troubleshooting)), type the IP shown in the PC's window instead.
 
 ## 🛠️ Building it yourself locally
 
@@ -82,12 +85,14 @@ Only needed if you want to edit the source and test without pushing to GitHub ea
 **Android app** — needs the [Flutter SDK](https://docs.flutter.dev/get-started/install):
 ```bash
 cd android-app
-flutter create --platforms=android --org com.virtualgamepad .
+flutter create --platforms=android --org in.atomprod .
 cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 flutter pub get
+dart run flutter_launcher_icons
 flutter run              # with a device/emulator connected
 # or: flutter build apk --release
 ```
+The app ID Flutter derives by default is `in.atomprod.virtual_gamepad`; CI forces it to the exact `in.atomprod.vgamepad` afterward (see the workflow) — if you need that exact ID locally too, edit the `applicationId`/`namespace` line in `android/app/build.gradle` (or `build.gradle.kts`) to match.
 
 **Windows app** — needs the [.NET 8 SDK](https://dotnet.microsoft.com/download):
 ```bash
@@ -96,6 +101,7 @@ dotnet run
 # distributable build:
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
+To build the installer locally instead of via CI, install [Inno Setup](https://jrsoftware.org/isinfo.php), copy `app_icon.ico` into `publish/`, then run `ISCC installer\setup.iss`.
 
 ## 📦 Publishing this yourself
 
@@ -111,6 +117,9 @@ Once pushed, the Actions tab starts building automatically — no extra setup re
 
 ## 🩺 Troubleshooting
 
+**The Windows app seems to not open at all**
+Almost always **Windows SmartScreen** silently blocking it (see step 3 in "Set up your PC" above) — look for a blue "Windows protected your PC" dialog, possibly behind other windows, and click "More info → Run anyway." If you truly see nothing at all, try running it from a terminal (`VirtualGamepadHost.exe`) so any startup error prints instead of failing silently, and check that you're on Windows 10/11 x64 (the self-contained build doesn't support other platforms).
+
 **"Failed to create virtual controller" on the PC**
 Install ViGEmBus, then restart the host app.
 
@@ -119,12 +128,12 @@ This is the most common issue and it's almost always the *network*, not the apps
 - Confirm phone and PC are on the exact same WiFi network (not phone hotspot + PC on ethernet from a different router, not a guest network for one and main for the other).
 - Many routers — especially mesh systems (eero, Google Nest WiFi), guest networks, and public/hotel WiFi — enable **"AP isolation" / "client isolation"**, which blocks device-to-device traffic on purpose for security. This is a router setting, not something the apps can bypass. Check your router's admin settings, or connect both devices to a different network without isolation.
 - Confirm Windows Firewall allowed `VirtualGamepadHost.exe` on **all** profiles — rerun [`open-firewall-port.ps1`](windows-app/open-firewall-port.ps1) as Administrator to be sure.
-- Watch the PC's console window while the phone searches — if you never see `Discovery request from ...` lines appear, the broadcast traffic isn't reaching the PC at all (network/firewall issue, not the app).
-- **Manual IP entry always works** even when auto-discovery can't (e.g. with AP isolation off but broadcast blocked) — type the IP shown in the PC console into the app.
+- Watch the PC app's log (click "Show connection log") while the phone searches — if you never see `Discovery request from ...` lines appear, the broadcast traffic isn't reaching the PC at all (network/firewall issue, not the app).
+- **Manual IP entry always works** even when auto-discovery can't (e.g. with AP isolation off but broadcast blocked) — type the IP shown in the PC app into the phone app.
 
 **"No response" after entering an IP manually**
 - Double check the IP — it changes if you reconnect to WiFi or restart the PC.
-- Confirm `VirtualGamepadHost.exe` is actually running (the console window should be open).
+- Confirm the Virtual Gamepad Host window is actually running.
 - Port `47998/UDP` needs to be reachable — see the firewall steps above.
 
 **Input feels laggy**
@@ -136,6 +145,9 @@ This runs over UDP on WiFi, so it depends on your router and network congestion.
 - [x] Auto-discovery of PCs on the local network
 - [x] Multiple phones connecting simultaneously
 - [x] Windows host with a proper branded GUI window (not just a console)
+- [x] Windows installer with Start Menu + Desktop shortcuts and uninstaller
+- [x] Custom app icon (Android + Windows), custom app ID (`in.atomprod.vgamepad`)
+- [x] Portrait-locked menus, landscape-locked gamepad screen
 - [ ] Bluetooth transport (fallback when there's no shared WiFi network)
 - [ ] Customizable button layout / remapping in-app
 - [ ] Rumble/vibration feedback from PC back to phone

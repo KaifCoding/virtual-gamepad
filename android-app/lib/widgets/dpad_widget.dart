@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:virtual_gamepad/theme.dart';
+// Placeholder colors matching a typical dark/sleek theme. 
+// Replace these with your actual AppColors values if needed!
 
-import '../theme.dart';
-
-/// A classic 4-way D-pad rendered as a solid filled circle with triangular
-/// arrows, matching the design. Reports which directions are currently
-/// held; diagonals work naturally since up/down and left/right are
-/// independent.
 class DpadWidget extends StatefulWidget {
   final double size;
   final void Function({required bool up, required bool down, required bool left, required bool right}) onChanged;
@@ -23,7 +20,9 @@ class _DpadWidgetState extends State<DpadWidget> {
     final s = widget.size;
     final center = Offset(s / 2, s / 2);
     final rel = local - center;
-    const deadzone = 16.0;
+    
+    // A proportional deadzone makes scaling the size much safer
+    final deadzone = s * 0.12; 
 
     final newUp = rel.dy < -deadzone;
     final newDown = rel.dy > deadzone;
@@ -54,9 +53,19 @@ class _DpadWidgetState extends State<DpadWidget> {
       onPanUpdate: (d) => _update(d.localPosition),
       onPanEnd: (_) => _reset(),
       onPanCancel: _reset,
-      child: SizedBox(
+      child: Container(
         width: s,
         height: s,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: CustomPaint(
           painter: _DpadPainter(up: up, down: down, left: left, right: right),
         ),
@@ -74,46 +83,71 @@ class _DpadPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final radius = size.width / 2;
 
-    final basePaint = Paint()..color = AppColors.stickFill;
-    canvas.drawCircle(center, radius, basePaint);
+    // 1. Draw Outer Tactile Rim
+    final rimPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.15),
+          Colors.black.withOpacity(0.4),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, rimPaint);
 
-    final arrowPaint = Paint()..color = Colors.white;
-    final activePaint = Paint()..color = Colors.white.withOpacity(0.55);
-    final arrowSize = radius * 0.32;
-    final offset = radius * 0.5;
+    // 2. Draw Main D-pad Body (Slightly smaller than rim)
+  final bodyRadius = radius * 0.92;
+    final bodyPaint = Paint()
+      ..color = AppColors.stickFill 
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, bodyRadius, bodyPaint);
 
-    _drawTriangle(canvas, center - Offset(0, offset), arrowSize, _Dir.up, up ? activePaint : arrowPaint);
-    _drawTriangle(canvas, center + Offset(0, offset), arrowSize, _Dir.down, down ? activePaint : arrowPaint);
-    _drawTriangle(canvas, center - Offset(offset, 0), arrowSize, _Dir.left, left ? activePaint : arrowPaint);
-    _drawTriangle(canvas, center + Offset(offset, 0), arrowSize, _Dir.right, right ? activePaint : arrowPaint);
+    // 3. Arrow Calculations & Geometry
+    final arrowSize = radius * 0.22;
+    final offset = radius * 0.62;
+
+    _drawDirectionalArrow(canvas, center - Offset(0, offset), arrowSize, _Dir.up, up);
+    _drawDirectionalArrow(canvas, center + Offset(0, offset), arrowSize, _Dir.down, down);
+    _drawDirectionalArrow(canvas, center - Offset(offset, 0), arrowSize, _Dir.left, left);
+    _drawDirectionalArrow(canvas, center + Offset(offset, 0), arrowSize, _Dir.right, right);
   }
 
-  void _drawTriangle(Canvas canvas, Offset center, double s, _Dir dir, Paint paint) {
+  void _drawDirectionalArrow(Canvas canvas, Offset center, double s, _Dir dir, bool isActive) {
+    // Active states glow vividly; idle states are clean, muted semi-transparents
+    final arrowPaint = Paint()
+      ..color = isActive ? AppColors.activeAccent : Colors.white.withOpacity(0.25)
+      ..style = PaintingStyle.fill
+      ..maskFilter = isActive ? const MaskFilter.blur(BlurStyle.solid, 2) : null;
+
     final path = Path();
     switch (dir) {
       case _Dir.up:
-        path.moveTo(center.dx, center.dy - s);
-        path.lineTo(center.dx - s, center.dy + s * 0.7);
-        path.lineTo(center.dx + s, center.dy + s * 0.7);
+        path.moveTo(center.dx, center.dy - s * 0.6);
+        path.lineTo(center.dx - s, center.dy + s * 0.5);
+        path.lineTo(center.dx, center.dy + s * 0.1); // Sleek chevron indentation
+        path.lineTo(center.dx + s, center.dy + s * 0.5);
         break;
       case _Dir.down:
-        path.moveTo(center.dx, center.dy + s);
-        path.lineTo(center.dx - s, center.dy - s * 0.7);
-        path.lineTo(center.dx + s, center.dy - s * 0.7);
+        path.moveTo(center.dx, center.dy + s * 0.6);
+        path.lineTo(center.dx - s, center.dy - s * 0.5);
+        path.lineTo(center.dx, center.dy - s * 0.1);
+        path.lineTo(center.dx + s, center.dy - s * 0.5);
         break;
       case _Dir.left:
-        path.moveTo(center.dx - s, center.dy);
-        path.lineTo(center.dx + s * 0.7, center.dy - s);
-        path.lineTo(center.dx + s * 0.7, center.dy + s);
+        path.moveTo(center.dx - s * 0.6, center.dy);
+        path.lineTo(center.dx + s * 0.5, center.dy - s);
+        path.lineTo(center.dx + s * 0.1, center.dy);
+        path.lineTo(center.dx + s * 0.5, center.dy + s);
         break;
       case _Dir.right:
-        path.moveTo(center.dx + s, center.dy);
-        path.lineTo(center.dx - s * 0.7, center.dy - s);
-        path.lineTo(center.dx - s * 0.7, center.dy + s);
+        path.moveTo(center.dx + s * 0.6, center.dy);
+        path.lineTo(center.dx - s * 0.5, center.dy - s);
+        path.lineTo(center.dx - s * 0.1, center.dy);
+        path.lineTo(center.dx - s * 0.5, center.dy + s);
         break;
     }
     path.close();
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, arrowPaint);
   }
 
   @override

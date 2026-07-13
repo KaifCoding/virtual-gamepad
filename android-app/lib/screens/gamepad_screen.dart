@@ -11,6 +11,11 @@ import '../widgets/gamepad_button_widget.dart';
 import '../widgets/joystick_widget.dart';
 import '../widgets/trigger_widget.dart';
 
+/// Matches the exact control layout from the reference mockup: LT/RB/D-pad
+/// stacked on the far left, a Back/Guide/Start icon row + L3/R3 pills in the
+/// upper middle, dual sticks either side of center, RB/RT on the upper
+/// right, and the ABXY diamond on the lower right. Landscape-only - see
+/// initState/dispose.
 class GamepadScreen extends StatefulWidget {
   final GamepadSocket socket;
   const GamepadScreen({super.key, required this.socket});
@@ -40,13 +45,27 @@ class _GamepadScreenState extends State<GamepadScreen> {
     _state.stop();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    // Every other screen in the app is portrait-only, so lock straight back
+    // to portrait here rather than "allow everything" - avoids a frame or
+    // two of sideways UI while ConnectScreen's own re-lock kicks in.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     super.dispose();
   }
 
   void _disconnect() {
     widget.socket.disconnect();
     Navigator.of(context).pop();
+  }
+
+  /// Positions a child using fractional (0-1) coordinates of the *center*
+  /// of the control, matching how the reference mockup was measured, so
+  /// the whole layout scales cleanly across phone screen sizes.
+  Widget _at(BoxConstraints c, double xFrac, double yFrac, double w, double h, Widget child) {
+    final left = c.maxWidth * xFrac - w / 2;
+    final top = c.maxHeight * yFrac - h / 2;
+    return Positioned(left: left, top: top, width: w, height: h, child: Center(child: child));
   }
 
   @override
@@ -62,136 +81,132 @@ class _GamepadScreenState extends State<GamepadScreen> {
           ),
         ),
         child: SafeArea(
-        child: Stack(
-          children: [
-            Row(
-              children: [
-                // Left cluster: stick + d-pad, stacked
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      JoystickWidget(
-                        label: 'LS',
-                        onChanged: (x, y) {
-                          _state.setLeftStick(x, y);
-                        },
-                      ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final c = constraints;
+              return Stack(
+                children: [
+                  // LT - top left, biggest circle on that side
+                  _at(c, 0.078, 0.182, 112, 112,
+                      TriggerWidget(label: 'LT', size: 112, onChanged: (v) => _state.setLeftTrigger(v))),
+
+                  // LB - below LT
+                  _at(c, 0.184, 0.339, 70, 70,
+                      GamepadButtonWidget(
+                        label: 'LB',
+                        size: 70,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitLb, p),
+                      )),
+
+                  // D-pad - lower left
+                  _at(c, 0.112, 0.620, 180, 180,
                       DpadWidget(
+                        size: 150,
                         onChanged: ({required up, required down, required left, required right}) {
                           _state.setDpad(up: up, down: down, left: left, right: right);
                         },
-                      ),
-                    ],
-                  ),
-                ),
-                // Center cluster: triggers/shoulders + start/back
-                SizedBox(
-                  width: 130,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TriggerWidget(label: 'LT', size: 70, onChanged: (v) => _state.setLeftTrigger(v)),
-                          TriggerWidget(label: 'RT', size: 70, onChanged: (v) => _state.setRightTrigger(v)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          GamepadButtonWidget(
-                            label: 'LB',
-                            pill: true,
-                            size: 26,
-                            color: AppColors.stickFill,
-                            onChanged: (p) => _state.setButton(Protocol.bitLb, p),
-                          ),
-                          GamepadButtonWidget(
-                            label: 'RB',
-                            pill: true,
-                            size: 26,
-                            color: AppColors.stickFill,
-                            onChanged: (p) => _state.setButton(Protocol.bitRb, p),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          GamepadButtonWidget(
-                            label: 'BACK',
-                            pill: true,
-                            size: 22,
-                            color: AppColors.stickFill,
-                            onChanged: (p) => _state.setButton(Protocol.bitBack, p),
-                          ),
-                          GamepadButtonWidget(
-                            label: 'START',
-                            pill: true,
-                            size: 22,
-                            color: AppColors.stickFill,
-                            onChanged: (p) => _state.setButton(Protocol.bitStart, p),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                      )),
+
+                  // Disconnect - small circle, top center
+                  _at(c, 0.470, 0.068, 50, 50,
+                      GestureDetector(
+                        onTap: _disconnect,
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(color: AppColors.stickFill, shape: BoxShape.circle),
+                          child: const Icon(Icons.close, color: Colors.white, size: 22),
+                        ),
+                      )),
+
+                  // Back / Guide / Start row - upper middle
+                  _at(c, 0.371, 0.242, 60, 60,
                       GamepadButtonWidget(
                         label: '',
-                        size: 34,
+                        icon: Icons.menu,
+                        size: 60,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitBack, p),
+                      )),
+                  _at(c, 0.470, 0.242, 68, 68,
+                      GamepadButtonWidget(
+                        label: '',
+                        icon: Icons.sports_esports,
+                        size: 68,
                         color: AppColors.stickFill,
                         onChanged: (p) => _state.setButton(Protocol.bitGuide, p),
-                        icon: Icons.sports_esports,
-                      ),
-                    ],
-                  ),
-                ),
-                // Right cluster: face buttons + stick
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _FaceButtons(state: _state),
-                      JoystickWidget(
-                        label: 'RS',
-                        onChanged: (x, y) {
-                          _state.setRightStick(x, y);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white38),
-                onPressed: _disconnect,
-                tooltip: 'Disconnect',
-              ),
-            ),
-          ],
+                      )),
+                  _at(c, 0.570, 0.242, 60, 60,
+                      GamepadButtonWidget(
+                        label: '',
+                        icon: Icons.tune,
+                        size: 60,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitStart, p),
+                      )),
+
+                  // L3 / R3 - pills just above the sticks
+                  _at(c, 0.416, 0.475, 90, 56,
+                      GamepadButtonWidget(
+                        label: 'LEFT',
+                        pill: true,
+                        size: 40,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitLsClick, p),
+                      )),
+                  _at(c, 0.526, 0.475, 90, 56,
+                      GamepadButtonWidget(
+                        label: 'RIGHT',
+                        pill: true,
+                        size: 40,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitRsClick, p),
+                      )),
+
+                  // Left stick
+                  _at(c, 0.310, 0.751, 160, 160,
+                      JoystickWidget(size: 160, onChanged: (x, y) => _state.setLeftStick(x, y))),
+
+                  // Right stick
+                  _at(c, 0.685, 0.751, 160, 160,
+                      JoystickWidget(size: 160, onChanged: (x, y) => _state.setRightStick(x, y))),
+
+                  // RB - upper right
+                  _at(c, 0.815, 0.346, 70, 70,
+                      GamepadButtonWidget(
+                        label: 'RB',
+                        size: 70,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitRb, p),
+                      )),
+
+                  // RT - top right corner, biggest circle on that side
+                  _at(c, 0.922, 0.182, 112, 112,
+                      TriggerWidget(label: 'RT', size: 112, onChanged: (v) => _state.setRightTrigger(v))),
+
+                  // ABXY diamond
+                  _at(c, 0.890, 0.620, 150, 150, _FaceButtons(state: _state, size: 150)),
+                ],
+              );
+            },
+          ),
         ),
       ),
-    ));
+    );
   }
 }
-
-/// The diamond of A/B/X/Y face buttons.
 class _FaceButtons extends StatelessWidget {
   final GamepadState state;
-  const _FaceButtons({required this.state});
+  final double size;
+  const _FaceButtons({required this.state, required this.size});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 140,
-      height: 140,
+      width: size,
+      height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [

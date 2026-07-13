@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../network/gamepad_socket.dart';
@@ -31,6 +32,19 @@ class _ConnectScreenState extends State<ConnectScreen> {
   @override
   void initState() {
     super.initState();
+    // This screen is portrait-only; only the in-game GamepadScreen locks to
+    // landscape. Re-asserted here (not just in SplashScreen) because we can
+    // land on this screen directly after disconnecting from a landscape
+    // gamepad session.
+    Navigator.of(context)
+          .push(MaterialPageRoute(
+        builder: (_) => GamepadScreen(socket: _socket),
+      ));
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    setState(() => _connecting = false);
+
     _discoverSub = _socket.discoveredStream.listen((host) {
       setState(() => _found[host.address] = host);
     });
@@ -64,6 +78,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
           .then((_) {
         setState(() => _error = null);
         _found.clear();
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
         _startDiscovery();
       });
     } else if (status == ConnectionStatus.error) {

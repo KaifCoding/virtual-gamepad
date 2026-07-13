@@ -1,5 +1,4 @@
 name: Build Windows Host
-
 on:
   push:
     branches: [main]
@@ -28,21 +27,24 @@ jobs:
       - name: Publish App Binary
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      - name: Copy icon into publish output (needed by the installer script)
-        run: Copy-Item app_icon.ico publish\app_icon.ico
-        shell: pwsh
-
       - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
+        run: choco install innosetup -y
 
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # Uses native Windows PowerShell GitHub CLI to upload the EXE safely without clearing out the Android APK
-      - name: Upload Raw Installer to GitHub Releases
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # FIX: Uses PowerShell's Rename-Item and correct local paths relative to the working-directory
+      - name: Rename Installer for release
         run: |
-          gh release create latest --title "Virtual Gamepad - Latest Build" --notes "Automated rolling builds." 2>$null
-          gh release upload latest dist/VirtualGamepadHost-Setup.exe --clobber
+          Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "VirtualGamepadHost-Setup-v0-${{ github.run_number }}.exe"
+
+      # Uploads the raw, unzipped Setup installer directly to your target release zone
+      - name: Upload Raw Installer to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "Virtual Gamepad Host Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          # Keeps the windows-app/ prefix required by the action outside the working-directory context
+          files: windows-app/dist/VirtualGamepadHost-Setup-v0-${{ github.run_number }}.exe

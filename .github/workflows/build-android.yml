@@ -23,7 +23,7 @@ jobs:
           channel: stable
 
       - name: Scaffold native android/ project (safe to re-run)
-        run: flutter create --platforms=android --org in.atomprod .
+        run: flutter create --platforms=android --org com.virtualgamepad .
 
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
@@ -34,34 +34,20 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      - name: Force application ID to in.atomprod.vgamepad
-        shell: bash
-        run: |
-          set -e
-          GRADLE_KTS="android/app/build.gradle.kts"
-          GRADLE_GROOVY="android/app/build.gradle"
-          if [ -f "$GRADLE_KTS" ]; then
-            sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
-            sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
-          elif [ -f "$GRADLE_GROOVY" ]; then
-            sed -i -E 's/(applicationId\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
-            sed -i -E 's/(namespace\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
-          else
-            echo "Could not find app/build.gradle(.kts)" >&2
-            exit 1
-          fi
-
       - name: Build release APK
         run: flutter build apk --release
 
+      # Rename step to swap the generic output name for your custom one
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-v0-${{ github.run_number }}.apk
 
-      # Uses native GitHub CLI to upload the APK safely without clearing out the Windows setup file
+      # Uploads the custom-named raw APK straight to your repository Releases page
       - name: Upload Raw APK to GitHub Releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create latest --title "Virtual Gamepad - Latest Build" --notes "Automated rolling builds." || true
-          gh release upload latest build/app/outputs/flutter-apk/VirtualGamepad.apk --clobber
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "Virtual Gamepad Android Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad-v0-${{ github.run_number }}.apk

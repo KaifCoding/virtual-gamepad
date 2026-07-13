@@ -25,12 +25,15 @@ jobs:
         shell: pwsh
         run: |
           $commitMsg = git log -1 --pretty=%B
-          # Check if the regex matches BEFORE indexing into the array
-          if ($commitMsg -match '(v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+)') {
-              $version = $Matches[0] # Grabs the full matched version text cleanly
+          # Safely use select-string to pull the pattern without crashing if it's missing
+          $versionMatch = [regex]::Match($commitMsg, 'v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+')
+          
+          if ($versionMatch.Success) {
+              $version = $versionMatch.Value
           } else {
               $version = "latest"
           }
+          
           $fileVersion = $version -replace '\.', '-'
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
           "FILE_VERSION=$fileVersion" | Out-File -FilePath $env:GITHUB_ENV -Append

@@ -64,3 +64,6 @@ jobs:
         run: |
           gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
           gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
+      - name: Clean up
+        run: |
+          rm -rf build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk

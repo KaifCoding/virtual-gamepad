@@ -22,11 +22,19 @@ class GamepadScreen extends StatefulWidget {
 class _GamepadScreenState extends State<GamepadScreen> {
   late final GamepadState _state;
 
-  // Track D-pad states locally to only vibrate when a direction is freshly clicked down
+  // Track D-pad states to only vibrate when a direction is freshly clicked down
   bool _upPressed = false;
   bool _downPressed = false;
   bool _leftPressed = false;
   bool _rightPressed = false;
+
+  // Track Trigger steps locally so they click at distinct thresholds (e.g., 10%, 50%, 90%)
+  int _leftTriggerStep = 0;
+  int _rightTriggerStep = 0;
+
+  // Track Joystick center deadzones locally to tick right when exiting the middle
+  bool _leftStickActive = false;
+  bool _rightStickActive = false;
 
   @override
   void initState() {
@@ -53,20 +61,62 @@ class _GamepadScreenState extends State<GamepadScreen> {
   }
 
   void _disconnect() {
-    HapticFeedback.mediumImpact(); // Distinct, clean confirmation thump for disconnecting
+    HapticFeedback.lightImpact();
     widget.socket.disconnect();
     Navigator.of(context).pop();
   }
 
-  /// Handles standard button haptics cleanly — only fires on down-press, ignoring the release
+  /// Handles standard button haptics cleanly — fires only on down-press
   void _handleButtonPress(int buttonBit, bool isPressed) {
     if (isPressed) {
-      HapticFeedback.lightImpact(); // Subtle mechanical micro-switch tick
+      HapticFeedback.lightImpact();
     }
     _state.setButton(buttonBit, isPressed);
   }
 
-  /// Positions a child using fractional (0-1) coordinates
+  /// Handles analog triggers: vibrates dynamically at progressive pull thresholds
+  void _handleTriggerHaptic(double value, bool isLeft) {
+    // Determine a step integer from 0 to 3 based on pressure deepness
+    int currentStep = 0;
+    if (value > 0.9) {
+      currentStep = 3;
+    } else if (value > 0.5) {
+      currentStep = 2;
+    } else if (value > 0.1) {
+      currentStep = 1;
+    }
+
+    final oldStep = isLeft ? _leftTriggerStep : _rightTriggerStep;
+    if (currentStep != oldStep) {
+      // Tick on both pulling further down and popping all the way back out
+      if (currentStep > oldStep || currentStep == 0) {
+        HapticFeedback.lightImpact();
+      }
+      if (isLeft) {
+        _leftTriggerStep = currentStep;
+      } else {
+        _rightTriggerStep = currentStep;
+      }
+    }
+  }
+
+  /// Handles joystick deadzones: vibrates exactly when the stick breaks out of center rest
+  void _handleJoystickHaptic(double x, double y, bool isLeft) {
+    // Check vector distance from center point (0,0)
+    final bool isMoving = (x * x + y * y) > 0.04; // ~20% tilt radius threshold
+    final oldActive = isLeft ? _leftStickActive : _rightStickActive;
+
+    if (isMoving && !oldActive) {
+      HapticFeedback.lightImpact(); // Click when passing out of deadzone range
+    }
+
+    if (isLeft) {
+      _leftStickActive = isMoving;
+    } else {
+      _rightStickActive = isMoving;
+    }
+  }
+
   Widget _at(BoxConstraints c, double xFrac, double yFrac, double w, double h, Widget child) {
     final left = c.maxWidth * xFrac - w / 2;
     final top = c.maxHeight * yFrac - h / 2;
@@ -93,7 +143,14 @@ class _GamepadScreenState extends State<GamepadScreen> {
                 children: [
                   // LT - Left Trigger
                   _at(c, 0.078, 0.182, 112, 112,
-                      TriggerWidget(label: 'LT', size: 112, onChanged: (v) => _state.setLeftTrigger(v))),
+                      TriggerWidget(
+                        label: 'LT', 
+                        size: 112, 
+                        onChanged: (v) {
+                          _handleTriggerHaptic(v, true);
+                          _state.setLeftTrigger(v);
+                        },
+                      )),
 
                   // LB - Left Bumper
                   _at(c, 0.184, 0.339, 70, 70,
@@ -109,15 +166,12 @@ class _GamepadScreenState extends State<GamepadScreen> {
                       DpadWidget(
                         size: 150,
                         onChanged: ({required up, required down, required left, required right}) {
-                          // Check if any direction changed from false to true to emit a micro-tick
                           if ((up && !_upPressed) || 
                               (down && !_downPressed) || 
                               (left && !_leftPressed) || 
                               (right && !_rightPressed)) {
-                            HapticFeedback.selectionClick(); // Ultra-light mechanical tick for D-pad shifts
+                            HapticFeedback.lightImpact(); 
                           }
-                          
-                          // Save current flags
                           _upPressed = up;
                           _downPressed = down;
                           _leftPressed = left;
@@ -184,11 +238,25 @@ class _GamepadScreenState extends State<GamepadScreen> {
                         onChanged: (p) => _handleButtonPress(Protocol.bitRsClick, p),
                       )),
 
-                  // Joysticks don't vibrate standardly on move events to avoid constant rattling
+                  // Left stick
                   _at(c, 0.310, 0.751, 160, 160,
-                      JoystickWidget(size: 160, onChanged: (x, y) => _state.setLeftStick(x, y))),
+                      JoystickWidget(
+                        size: 160, 
+                        onChanged: (x, y) {
+                          _handleJoystickHaptic(x, y, true);
+                          _state.setLeftStick(x, y);
+                        },
+                      )),
+
+                  // Right stick
                   _at(c, 0.685, 0.751, 160, 160,
-                      JoystickWidget(size: 160, onChanged: (x, y) => _state.setRightStick(x, y))),
+                      JoystickWidget(
+                        size: 160, 
+                        onChanged: (x, y) {
+                          _handleJoystickHaptic(x, y, false);
+                          _state.setRightStick(x, y);
+                        },
+                      )),
 
                   // RB - Upper Right
                   _at(c, 0.815, 0.346, 70, 70,
@@ -201,7 +269,14 @@ class _GamepadScreenState extends State<GamepadScreen> {
 
                   // RT - Right Trigger
                   _at(c, 0.922, 0.182, 112, 112,
-                      TriggerWidget(label: 'RT', size: 112, onChanged: (v) => _state.setRightTrigger(v))),
+                      TriggerWidget(
+                        label: 'RT', 
+                        size: 112, 
+                        onChanged: (v) {
+                          _handleTriggerHaptic(v, false);
+                          _state.setRightTrigger(v);
+                        },
+                      )),
 
                   // ABXY Diamond Layout
                   _at(c, 0.890, 0.620, 150, 150, 

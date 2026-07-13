@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write # Required to securely post assets to GitHub Releases
 
 jobs:
   build:
@@ -18,21 +18,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full history so we can read tags/commits accurately
+          fetch-depth: 0 # Fetches full history so we can read commits accurately
 
+      # Extracts dynamic version from commit message (defaults to 'latest' if none found)
       - name: Extract Version Name
         id: get_version
         working-directory: . # OVERRIDE: Allows access to git logs at repository root
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+          TAG=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
           
-          if [ -z "$VERSION" ]; then
-            VERSION="latest"
+          if [ -z "$TAG" ]; then
+            TAG="latest"
           fi
           
-          FILE_VERSION=$(echo "$VERSION" | tr '.' '-')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          CLEAN_VERSION=$(echo "$TAG" | sed 's/^v//')
+          FILE_VERSION=$(echo "$CLEAN_VERSION" | tr '.' '-')
+          
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
       - uses: subosito/flutter-action@v2
@@ -51,19 +54,34 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
+      # Locks down the application package namespace explicitly before compile blocks run
+      - name: Force application ID to im.atomprod.vgamepad
+        shell: bash
+        run: |
+          set -e
+          GRADLE_KTS="android/app/build.gradle.kts"
+          GRADLE_GROOVY="android/app/build.gradle"
+          if [ -f "$GRADLE_KTS" ]; then
+            sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"im.atomprod.vgamepad"/' "$GRADLE_KTS"
+            sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"im.atomprod.vgamepad"/' "$GRADLE_KTS"
+          elif [ -f "$GRADLE_GROOVY" ]; then
+            sed -i -E 's/(applicationId\s+)"[^"]*"/\1"im.atomprod.vgamepad"/' "$GRADLE_GROOVY"
+            sed -i -E 's/(namespace\s+)"[^"]*"/\1"im.atomprod.vgamepad"/' "$GRADLE_GROOVY"
+          fi
+
+      # FIX: Inject your commit version as the display name, and unique run counter as internal code
       - name: Build release APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release --build-name=${{ env.RELEASE_TAG }} --build-number=${{ github.run_number }}
 
       - name: Rename APK for release
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
 
+      # Uses native GitHub CLI to upload the APK safely to the matching release zone
       - name: Upload Raw APK to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
-          gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
-      - name: Clean up
-        run: |
-          rm -rf build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+          gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production stable binaries." || true
+          gh release upload ${{ env.RELEASE_TAG }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber

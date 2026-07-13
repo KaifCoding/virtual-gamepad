@@ -40,7 +40,7 @@ jobs:
       # Rename step to swap the generic output name for your custom one
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-v0-${{ github.run_number }}.apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-v0-4-5.apk
 
       # Uploads the custom-named raw APK straight to your repository Releases page
       - name: Upload Raw APK to GitHub Releases
@@ -50,4 +50,4 @@ jobs:
           name: "Virtual Gamepad Android Build #${{ github.run_number }}"
           draft: false
           prerelease: false
-          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad-v0-${{ github.run_number }}.apk
+          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad-v0-4-5.apk

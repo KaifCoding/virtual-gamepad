@@ -1,4 +1,5 @@
 name: Build Windows Host
+
 on:
   push:
     branches: [main]
@@ -33,11 +34,6 @@ jobs:
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # FIX: Uses PowerShell's Rename-Item and correct local paths relative to the working-directory
-      - name: Rename Installer for release
-        run: |
-          Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "VirtualGamepadHost-Setup-v0-${{ github.run_number }}.exe"
-
       # Uploads the raw, unzipped Setup installer directly to your target release zone
       - name: Upload Raw Installer to GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -46,5 +42,5 @@ jobs:
           name: "Virtual Gamepad Host Build #${{ github.run_number }}"
           draft: false
           prerelease: false
-          # Keeps the windows-app/ prefix required by the action outside the working-directory context
-          files: windows-app/dist/VirtualGamepadHost-Setup-v0-${{ github.run_number }}.exe
+          # Updated to target your new clean output filename
+          files: windows-app/dist/virtualGamepad-v0-4-5.exe

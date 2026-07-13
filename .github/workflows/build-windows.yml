@@ -20,20 +20,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Extracts custom version values using native PowerShell regex matching
       - name: Extract Version Name
         id: get_version
         shell: pwsh
         run: |
           $commitMsg = git log -1 --pretty=%B
+          # Check if the regex matches BEFORE indexing into the array
           if ($commitMsg -match '(v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+)') {
-              $version = $Matches[1]
+              $version = $Matches[0] # Grabs the full matched version text cleanly
           } else {
               $version = "latest"
           }
           $fileVersion = $version -replace '\.', '-'
-          echo "VERSION=$version" >> $env:GITHUB_ENV
-          echo "FILE_VERSION=$fileVersion" >> $env:GITHUB_ENV
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "FILE_VERSION=$fileVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - uses: actions/setup-dotnet@v4
         with:

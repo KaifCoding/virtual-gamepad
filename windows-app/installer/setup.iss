@@ -22,7 +22,6 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 DefaultDirName={localappdata}\Programs\VirtualGamepadHost
-DefaultGroupName=Virtual Gamepad
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
@@ -45,9 +44,11 @@ Source: "..\publish\VirtualGamepadHost.exe"; DestDir: "{app}"; Flags: ignorevers
 Source: "..\publish\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Virtual Gamepad Host"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"
-Name: "{group}\Uninstall Virtual Gamepad Host"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Virtual Gamepad Host"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon
+; Placed directly into {userprograms} so it registers cleanly with Windows Search
+Name: "{userprograms}\Virtual Gamepad Host"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"
+Name: "{userprograms}\Uninstall Virtual Gamepad Host"; Filename: "{uninstallexe}"
+; Placed on the desktop if the user selects the checkbox during installation
+Name: "{userdesktop}\Virtual Gamepad Host"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Virtual Gamepad Host now"; Flags: nowait postinstall skipifsilent

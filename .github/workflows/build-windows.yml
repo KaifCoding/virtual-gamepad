@@ -6,6 +6,9 @@ on:
     paths: ["windows-app/**", ".github/workflows/build-windows.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write # Required to securely post assets to GitHub Releases
+
 jobs:
   build:
     runs-on: windows-latest
@@ -19,13 +22,27 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore
+      - name: Restore dependencies
         run: dotnet restore
 
-      - name: Publish (self-contained single exe)
+      - name: Publish App Binary
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      - uses: actions/upload-artifact@v4
+      # Automatically installs Inno Setup inside the CI environment runner path
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      # Compiles your installer using your optimized .iss configuration file
+      - name: Build Installer Package
+        run: iscc installer.iss
+
+      # Uploads the raw, unzipped Setup.exe straight to your repository Releases page
+      - name: Upload Raw Installer to GitHub Releases
+        uses: softprops/action-gh-release@v2
         with:
-          name: virtual-gamepad-windows
-          path: windows-app/publish/VirtualGamepadHost.exe
+          tag_name: v${{ github.run_number }}
+          name: "Virtual Gamepad Host Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          # Points exactly to where your ISS script maps the OutputDir file output
+          files: dist/VirtualGamepadHost-Setup.exe

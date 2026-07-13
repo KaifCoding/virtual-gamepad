@@ -6,6 +6,9 @@ on:
     paths: ["android-app/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write # Required to create/update releases and upload assets
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,10 +31,24 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      - name: Generate App Icons
+        run: dart run flutter_launcher_icons
+
       - name: Build release APK
         run: flutter build apk --release
 
+      # Optional: Keeps the zip in your Actions run if you still want it there
       - uses: actions/upload-artifact@v4
         with:
           name: virtual-gamepad-android
-          path: android-app/build/app/outputs/flutter-apk/virtual-gamepad.apk
+          path: android-app/build/app/outputs/flutter-apk/app-release.apk
+
+      # Fix: Uploads the raw, unzipped .apk straight to your repository Releases page
+      - name: Upload Raw APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "Virtual Gamepad Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: android-app/build/app/outputs/flutter-apk/app-release.apk

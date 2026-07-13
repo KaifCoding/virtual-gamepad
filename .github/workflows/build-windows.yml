@@ -3,7 +3,6 @@ name: Build Windows Host
 on:
   push:
     branches: [main]
-    paths: ["windows-app/**", ".github/workflows/build-windows.yml"]
   workflow_dispatch:
 
 permissions:

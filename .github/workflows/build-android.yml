@@ -58,15 +58,10 @@ jobs:
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
 
-      # Uploads Raw APK directly to the release zone without matching errors
+      # Uses native GitHub CLI to upload the APK safely without clearing out the Windows setup file
       - name: Upload Raw APK to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: "Virtual Gamepad - Latest Build"
-          draft: false
-          prerelease: false
-          make_latest: true
-          append_body: true
-          fail_on_unmatched_files: true # Forces build verification to ensure no path bleed
-          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest --title "Virtual Gamepad - Latest Build" --notes "Automated rolling builds." || true
+          gh release upload latest build/app/outputs/flutter-apk/VirtualGamepad.apk --clobber

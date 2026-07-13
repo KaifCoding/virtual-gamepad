@@ -16,11 +16,10 @@ DefaultDirName={localappdata}\Programs\VirtualGamepadHost
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
-; Look up one level, then create a clean setup output folder
 OutputDir=..\dist
 OutputBaseFilename=VirtualGamepadHost-Setup
-; Look up one level to find the publish folder for the icon
-SetupIconFile=..\publish\app_icon.ico
+; Pulls the icon directly from the windows-app root directory
+SetupIconFile=..\app_icon.ico
 WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
@@ -33,8 +32,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: checkedonce
 
 [Files]
-; Look up one level to grab files from the publish folder
 Source: "..\publish\VirtualGamepadHost.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Pulls the icon from the windows-app root directory to pack it into the installation package
 Source: "..\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Required to securely post assets to GitHub Releases
+  contents: write # Grants write token execution to safely declare GitHub Releases
 
 jobs:
   build:
@@ -28,15 +28,13 @@ jobs:
       - name: Publish App Binary
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      # Automatically installs Inno Setup inside the CI environment runner path
       - name: Install Inno Setup
         run: choco install innosetup -y
 
-      # Compiles the installer targeting your actual folder path
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # Uploads the raw, unzipped Setup.exe straight to your repository Releases page
+      # Uploads the raw, unzipped Setup installer directly to your target release zone
       - name: Upload Raw Installer to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

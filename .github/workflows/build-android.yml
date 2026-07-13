@@ -79,16 +79,24 @@ jobs:
           GRADLE_GROOVY="android/app/build.gradle"
           
           if [ -f "$GRADLE_KTS" ]; then
-            # Set explicit namespace & application ID
+            # 1. Update IDs
             sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
+            
+            # 2. Inject Signing Configurations safely for Kotlin DSL (.kts)
+            sed -i '/buildTypes \{/i \
+            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = java.util.Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties["keyAlias"] as String?\n        keyPassword = keystoreProperties["keyPassword"] as String?\n        storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }\n        storePassword = keystoreProperties["storePassword"] as String?\n    }\n}\n' "$GRADLE_KTS"
+            
+            sed -i 's/getByName("release") \{/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
+            
           elif [ -f "$GRADLE_GROOVY" ]; then
+            # 1. Update IDs
             sed -i -E 's/(applicationId\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
             sed -i -E 's/(namespace\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
             
-            # Inject key.properties signing rules directly into the build configuration logic
+            # 2. Inject CLEAN Signing Configurations for Groovy (.gradle) - NO "roles ->" typo
             sed -i '/buildTypes {/i \
-            keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    def keystoreProperties = new Properties()\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n    signingConfigs {\n        release {\n            keyAlias keystoreProperties["keyAlias"]\n            keyPassword keystoreProperties["keyPassword"]\n            storeFile roles -> rootProject.file(keystoreProperties["storeFile"])\n            storePassword keystoreProperties["storePassword"]\n        }\n    }\n}' "$GRADLE_GROOVY"
+            def keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    def keystoreProperties = new Properties()\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n    signingConfigs {\n        release {\n            keyAlias keystoreProperties["keyAlias"]\n            keyPassword keystoreProperties["keyPassword"]\n            storeFile rootProject.file(keystoreProperties["storeFile"])\n            storePassword keystoreProperties["storePassword"]\n        }\n    }\n}\n' "$GRADLE_GROOVY"
             
             sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }/' "$GRADLE_GROOVY"
           fi

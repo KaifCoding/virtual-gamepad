@@ -38,7 +38,7 @@ jobs:
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # FIX: Appends asset to the "latest" release structure without overwriting existing sibling entries
+      # Uploads Raw Installer directly to the release zone without matching errors
       - name: Upload Raw Installer to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
@@ -47,5 +47,6 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
-          fail_on_unmatched_files: false
+          append_body: true
+          fail_on_unmatched_files: true # Forces build verification to ensure no path bleed
           files: windows-app/dist/VirtualGamepadHost-Setup.exe

@@ -58,7 +58,7 @@ jobs:
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
 
-      # FIX: Appends asset to the "latest" release structure without overwriting existing sibling entries
+      # Uploads Raw APK directly to the release zone without matching errors
       - name: Upload Raw APK to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
@@ -67,5 +67,6 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
-          fail_on_unmatched_files: false
+          append_body: true
+          fail_on_unmatched_files: true # Forces build verification to ensure no path bleed
           files: android-app/build/app/outputs/flutter-apk/VirtualGamepad.apk

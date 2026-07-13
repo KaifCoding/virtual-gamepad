@@ -44,5 +44,5 @@ jobs:
           name: "Virtual Gamepad Host Build #${{ github.run_number }}"
           draft: false
           prerelease: false
-          # Points exactly to where your ISS script maps the OutputDir file output
-          files: dist/VirtualGamepadHost-Setup.exe
+          # Points exactly to the updated windows-app/dist directory
+          files: windows-app/dist/VirtualGamepadHost-Setup.exe

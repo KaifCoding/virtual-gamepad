@@ -87,9 +87,9 @@ jobs:
             sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             
-            # 2. Inject Signing Configurations safely for Kotlin DSL (.kts)
+            # 2. Inject Signing Configurations safely for Kotlin DSL (.kts) using clean native reader methods
             sed -i '/buildTypes {/i \
-            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = java.util.Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties["keyAlias"] as String?\n        keyPassword = keystoreProperties["keyPassword"] as String?\n        storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }\n        storePassword = keystoreProperties["storePassword"] as String?\n    }\n}\n' "$GRADLE_KTS"
+            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = java.util.Properties()\nif (keystorePropertiesFile.exists()) {\n    keystorePropertiesFile.reader().use { keystoreProperties.load(it) }\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties.getProperty("keyAlias")\n        keyPassword = keystoreProperties.getProperty("keyPassword")\n        storeFile = keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) }\n        storePassword = keystoreProperties.getProperty("storePassword")\n    }\n}\n' "$GRADLE_KTS"
             
             sed -i 's/getByName("release") {/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
             

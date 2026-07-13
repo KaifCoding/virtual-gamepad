@@ -23,9 +23,10 @@ jobs:
       - name: Extract Version Name
         id: get_version
         shell: pwsh
+        working-directory: . # OVERRIDE: Runs at root level so 'git' commands can see the .git folder
         run: |
           $commitMsg = git log -1 --pretty=%B
-          # Safely use select-string to pull the pattern without crashing if it's missing
+          # Safely extract the version pattern without crashing if it's missing
           $versionMatch = [regex]::Match($commitMsg, 'v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+')
           
           if ($versionMatch.Success) {

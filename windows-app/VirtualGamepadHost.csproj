@@ -21,6 +21,9 @@
   <ItemGroup>
     <Resource Include="app_icon.png" />
     <Resource Include="app_icon.ico" />
+    <None Update="app_icon.ico">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
   </ItemGroup>
 
 </Project>

@@ -35,7 +35,7 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 [Files]
 ; Look up one level to grab files from the publish folder
 Source: "..\publish\VirtualGamepadHost.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{userprograms}\Virtual Gamepad Host"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"

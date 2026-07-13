@@ -1,26 +1,40 @@
 import 'package:flutter/material.dart';
 
-/// Central palette matching the Canva design (purple/blue gradient brand,
-/// dark indigo gamepad screen, muted face-button colors).
+// class AppColors {
+//   static const gradientTop = Color(0xFF021B2D);
+//   static const gradientBottom = Color(0xFF04293A);
+
+//   static const accent = Color(0xFF00E5FF);
+//   static const accentLight = Color(0xFF8BE9FD);
+
+//   static const iconBg = Color(0xFF00BCD4);
+
+//   static const gamepadTop = Color(0xFF111827);
+//   static const gamepadBottom = Color(0xFF030712);
+
+//   static const buttonA = Color(0xFF00C853);
+//   static const buttonB = Color(0xFFFF5252);
+//   static const buttonX = Color(0xFF448AFF);
+//   static const buttonY = Color(0xFFFFD740);
+
+//   static const stickFill = Color(0xFF0F4C75);
+// }
 class AppColors {
-  // Splash / connect screen gradient (light violet -> vivid blue-violet)
-  static const gradientTop = Color(0xFFA99EF5);
-  static const gradientBottom = Color(0xFF3D2BEB);
+  static const gradientTop = Color(0xFF0F0C29);
+  static const gradientBottom = Color(0xFF302B63);
 
-  // App icon / primary accent
-  static const iconBg = Color(0xFF0B5FA3);
-  static const accent = Color(0xFF6366F1);
-  static const accentLight = Color(0xFF8B5CF6);
+  static const accent = Color(0xFFFF00E5);
+  static const accentLight = Color(0xFF32DBFF);
 
-  // Gamepad (in-game) screen gradient
-  static const gamepadTop = Color(0xFF201347);
-  static const gamepadBottom = Color(0xFF0A0818);
+  static const iconBg = Color(0xFF8A2BE2);
 
-  // Face buttons - matches the mockup's muted palette
-  static const buttonA = Color(0xFF4CAF50); // green
-  static const buttonB = Color(0xFFD32F2F); // red
-  static const buttonX = Color(0xFF16A085); // teal
-  static const buttonY = Color(0xFFB5A642); // olive/dark yellow
+  static const gamepadTop = Color(0xFF111827);
+  static const gamepadBottom = Color(0xFF030712);
 
-  static const stickFill = Color(0xFF6C63FF);
+  static const buttonA = Color(0xFF00FF85);
+  static const buttonB = Color(0xFFFF1744);
+  static const buttonX = Color(0xFF00BFFF);
+  static const buttonY = Color(0xFFFFD600);
+
+  static const stickFill = Color(0xFF4B0082);
 }

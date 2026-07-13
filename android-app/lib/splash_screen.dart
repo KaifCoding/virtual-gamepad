@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import 'screens/connect_screen.dart';
 import 'theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,6 +16,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     Timer(const Duration(milliseconds: 1400), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -46,23 +50,29 @@ class _SplashScreenState extends State<SplashScreen> {
                   color: AppColors.iconBg,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 24, offset: const Offset(0, 8)),
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8)),
                   ],
                 ),
-                child: const Icon(Icons.sports_esports, color: Colors.white, size: 56),
+                child: const Icon(Icons.sports_esports,
+                    color: Colors.white, size: 80),
               ),
               const SizedBox(height: 28),
               // Approximation of the script "Virtual" wordmark from the design -
               // swap in the exact font if you share the Canva font name.
-              const Text(
+              Text(
                 'Virtual',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 44,
-                  fontStyle: FontStyle.italic,
-                  fontFamily: 'cursive',
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
+                style: GoogleFonts.inspiration(
+                  textStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 80,
+                    fontStyle: FontStyle.italic,
+                    fontFamily: 'cursive',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
                 ),
               ),
               const Text(
@@ -77,7 +87,8 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 6),
               Text(
                 'Free forever',
-                style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 15),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.75), fontSize: 15),
               ),
             ],
           ),

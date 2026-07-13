@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../network/gamepad_socket.dart';
 import '../network/protocol.dart';
 import '../theme.dart';
@@ -44,7 +45,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
     setState(() => _secondsSearching = 0);
     _socket.discover();
     _discoverTimer?.cancel();
-    _discoverTimer = Timer.periodic(const Duration(seconds: 2), (_) => _socket.discover());
+    _discoverTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => _socket.discover());
     _searchClock?.cancel();
     _searchClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _secondsSearching++);
@@ -55,9 +57,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
     if (!mounted) return;
     if (status == ConnectionStatus.connected) {
       setState(() => _connecting = false);
-      Navigator.of(context).push(MaterialPageRoute(
+      Navigator.of(context)
+          .push(MaterialPageRoute(
         builder: (_) => GamepadScreen(socket: _socket),
-      )).then((_) {
+      ))
+          .then((_) {
         setState(() => _error = null);
         _found.clear();
         _startDiscovery();
@@ -132,11 +136,15 @@ class _ConnectScreenState extends State<ConnectScreen> {
                             color: AppColors.iconBg,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.sports_esports, color: Colors.white, size: 32),
+                          child: const Icon(Icons.sports_esports,
+                              color: Colors.white, size: 50),
                         ),
                         const SizedBox(height: 12),
                         const Text('Virtual Gamepad',
-                            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
                         Text('FREE FOREVER · WIFI CONTROLLER',
                             style: TextStyle(
@@ -158,16 +166,21 @@ class _ConnectScreenState extends State<ConnectScreen> {
                                 setState(() => _found.clear());
                                 _startDiscovery();
                               },
-                              icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
-                              label: const Text('Refresh', style: TextStyle(color: Colors.white70)),
+                              icon: const Icon(Icons.refresh,
+                                  size: 16, color: Colors.white70),
+                              label: const Text('Refresh',
+                                  style: TextStyle(color: Colors.white70)),
                             ),
                     ),
                     const SizedBox(height: 10),
-                    if (_found.isEmpty) _SearchingCard(seconds: _secondsSearching, onRetry: _startDiscovery),
+                    if (_found.isEmpty)
+                      _SearchingCard(
+                          seconds: _secondsSearching, onRetry: _startDiscovery),
                     ..._found.values.map((h) => _HostCard(
                           host: h,
                           connecting: _connecting,
-                          onTap: _connecting ? null : () => _connectTo(h.address),
+                          onTap:
+                              _connecting ? null : () => _connectTo(h.address),
                         )),
                     const SizedBox(height: 28),
                     const _SectionHeader(title: 'Enter PC IP manually'),
@@ -184,27 +197,92 @@ class _ConnectScreenState extends State<ConnectScreen> {
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                          border: Border.all(
+                              color: Colors.redAccent.withOpacity(0.4)),
                         ),
                         child: Text(_error!,
-                            style: const TextStyle(color: Colors.white, fontSize: 12.5, height: 1.4)),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                height: 1.4)),
                       ),
                     ],
                     if (_myAddresses.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Text('This phone: ${_myAddresses.join(", ")}',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 11)),
                     ],
                   ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 18, top: 8),
-                child: Text(
-                  'Copyright © 2026 Atomprod',
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Made with ❤️ by '),
+                          TextSpan(
+                            text: 'Mohammad Kaif',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () async {
+                                final uri = Uri.parse(
+                                    'https://kaif.atomprod.in');
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 12.5,
+                        ),
+                        children: [
+                          const TextSpan(
+                            text: 'Copyright © 2026 ',
+                          ),
+                          TextSpan(
+                            text: 'Atomprod',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () async {
+                                final uri = Uri.parse('https://atomprod.in');
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              )
             ],
           ),
         ),
@@ -223,7 +301,11 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Text(title,
-            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3)),
         const Spacer(),
         if (trailing != null) trailing!,
       ],
@@ -252,13 +334,15 @@ class _SearchingCard extends StatelessWidget {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Searching your WiFi network for PCs running Virtual Gamepad Host...',
-                  style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.85), fontSize: 13),
                 ),
               ),
             ],
@@ -271,7 +355,8 @@ class _SearchingCard extends StatelessWidget {
               "Not finding it? Some routers block automatic discovery (guest WiFi, "
               "mesh networks, or \"AP isolation\" settings). Enter the PC's IP shown "
               "in its window below instead - it always works.",
-              style: TextStyle(color: Colors.amber.shade100, fontSize: 12, height: 1.4),
+              style: TextStyle(
+                  color: Colors.amber.shade100, fontSize: 12, height: 1.4),
             ),
             const SizedBox(height: 10),
             Align(
@@ -279,7 +364,8 @@ class _SearchingCard extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
-                label: const Text('Search again', style: TextStyle(color: Colors.white)),
+                label: const Text('Search again',
+                    style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
@@ -293,7 +379,8 @@ class _HostCard extends StatelessWidget {
   final DiscoveredHost host;
   final bool connecting;
   final VoidCallback? onTap;
-  const _HostCard({required this.host, required this.connecting, required this.onTap});
+  const _HostCard(
+      {required this.host, required this.connecting, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +406,8 @@ class _HostCard extends StatelessWidget {
                     color: const Color(0xFF6B7280),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.desktop_windows_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.desktop_windows_rounded,
+                      color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -327,14 +415,25 @@ class _HostCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(host.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-                      Text(host.address, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12.5)),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                      Text(host.address,
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.75),
+                              fontSize: 12.5)),
                     ],
                   ),
                 ),
                 connecting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white.withOpacity(0.6)),
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Icon(Icons.arrow_forward_ios,
+                        size: 14, color: Colors.white.withOpacity(0.6)),
               ],
             ),
           ),
@@ -348,7 +447,10 @@ class _ManualEntryCard extends StatelessWidget {
   final TextEditingController controller;
   final bool connecting;
   final VoidCallback onConnect;
-  const _ManualEntryCard({required this.controller, required this.connecting, required this.onConnect});
+  const _ManualEntryCard(
+      {required this.controller,
+      required this.connecting,
+      required this.onConnect});
 
   @override
   Widget build(BuildContext context) {
@@ -366,12 +468,15 @@ class _ManualEntryCard extends StatelessWidget {
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white70),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.dns_rounded, color: Colors.white70, size: 20),
+              prefixIcon: const Icon(Icons.dns_rounded,
+                  color: Colors.white70, size: 20),
               hintText: '10.25.224.56',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               filled: true,
               fillColor: Colors.black.withOpacity(0.18),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
@@ -387,14 +492,21 @@ class _ManualEntryCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black.withOpacity(0.18),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: connecting || !hasText ? null : onConnect,
                   child: connecting
                       ? const SizedBox(
-                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Text('CONNECT',
-                          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.white)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                              color: Colors.white)),
                 ),
               );
             },

@@ -83,13 +83,16 @@ jobs:
           GRADLE_GROOVY="android/app/build.gradle"
           
           if [ -f "$GRADLE_KTS" ]; then
-            # 1. Update IDs
+            # 1. Add imports to the VERY TOP of the file to prevent 'java' namespace shadowing inside the android block
+            sed -i '1s/^/import java.util.Properties\nimport java.io.FileInputStream\n\n/' "$GRADLE_KTS"
+            
+            # 2. Update IDs
             sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             
-            # 2. Inject Signing Configurations safely for Kotlin DSL (.kts) using clean native reader methods
+            # 3. Inject Signing Configurations safely for Kotlin DSL (.kts) with EXPLICIT types
             sed -i '/buildTypes {/i \
-            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = java.util.Properties()\nif (keystorePropertiesFile.exists()) {\n    keystorePropertiesFile.reader().use { keystoreProperties.load(it) }\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties.getProperty("keyAlias")\n        keyPassword = keystoreProperties.getProperty("keyPassword")\n        storeFile = keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) }\n        storePassword = keystoreProperties.getProperty("storePassword")\n    }\n}\n' "$GRADLE_KTS"
+            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties.getProperty("keyAlias") as String\n        keyPassword = keystoreProperties.getProperty("keyPassword") as String\n        val sf = keystoreProperties.getProperty("storeFile") as String\n        storeFile = rootProject.file(sf)\n        storePassword = keystoreProperties.getProperty("storePassword") as String\n    }\n}\n' "$GRADLE_KTS"
             
             sed -i 's/getByName("release") {/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
             

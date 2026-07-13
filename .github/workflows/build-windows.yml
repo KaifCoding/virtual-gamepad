@@ -38,10 +38,7 @@ jobs:
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # Same fixed "latest" tag as build-android.yml - both workflows update
-      # this one release in place, so it always carries both files together
-      # instead of forking into separate v-number releases that only ever
-      # have one file each.
+      # FIX: Appends asset to the "latest" release structure without overwriting existing sibling entries
       - name: Upload Raw Installer to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
@@ -49,4 +46,6 @@ jobs:
           name: "Virtual Gamepad - Latest Build"
           draft: false
           prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
           files: windows-app/dist/VirtualGamepadHost-Setup.exe

@@ -54,17 +54,11 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      # Rename step to swap the generic output name for your custom one
       - name: Rename APK for release
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
 
-      # Uploads to a single, fixed "latest" release that both this workflow
-      # and build-windows.yml update in place - so the release always ends
-      # up with BOTH files attached, regardless of which one ran most
-      # recently. (github.run_number is per-workflow, so using it as the
-      # tag here would make Android and Windows collide on tags like "v5"
-      # for unrelated builds - a fixed tag avoids that entirely.)
+      # FIX: Appends asset to the "latest" release structure without overwriting existing sibling entries
       - name: Upload Raw APK to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
@@ -72,4 +66,6 @@ jobs:
           name: "Virtual Gamepad - Latest Build"
           draft: false
           prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
           files: android-app/build/app/outputs/flutter-apk/VirtualGamepad.apk

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Grants write token execution to safely declare GitHub Releases
+  contents: write
 
 jobs:
   build:
@@ -17,6 +17,23 @@ jobs:
         working-directory: windows-app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Extracts custom version values using native PowerShell regex matching
+      - name: Extract Version Name
+        id: get_version
+        shell: pwsh
+        run: |
+          $commitMsg = git log -1 --pretty=%B
+          if ($commitMsg -match '(v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+)') {
+              $version = $Matches[1]
+          } else {
+              $version = "latest"
+          }
+          $fileVersion = $version -replace '\.', '-'
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+          echo "FILE_VERSION=$fileVersion" >> $env:GITHUB_ENV
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -34,13 +51,16 @@ jobs:
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # Uploads the raw, unzipped Setup installer directly to your target release zone
+      # Updates the file dynamically to use your custom build output pattern
+      - name: Rename Windows Installer
+        shell: pwsh
+        run: |
+          Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "virtualGamepad-${{ env.FILE_VERSION }}.exe"
+
       - name: Upload Raw Installer to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.run_number }}
-          name: "Virtual Gamepad Host Build #${{ github.run_number }}"
-          draft: false
-          prerelease: false
-          # Updated to target your new clean output filename
-          files: windows-app/dist/virtualGamepad-v0-4-5.exe
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." 2>$null
+          gh release upload ${{ env.VERSION }} dist/virtualGamepad-${{ env.FILE_VERSION }}.exe --clobber

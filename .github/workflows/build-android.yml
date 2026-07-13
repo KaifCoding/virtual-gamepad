@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Required to securely post assets to GitHub Releases
+  contents: write
 
 jobs:
   build:
@@ -17,6 +17,24 @@ jobs:
         working-directory: android-app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches full history so we can read tags/commits accurately
+
+      # Extracts dynamic version from commit message (defaults to 'latest' if none found)
+      - name: Extract Version Name
+        id: get_version
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          # Searches commit message for something like v1.2.3 or 1.2.3
+          if [[ "$COMMIT_MSG" =~ (v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            VERSION="latest"
+          fi
+          # Convert dots to dashes for the filename version formatting (e.g., v0-4-5)
+          FILE_VERSION=$(echo "$VERSION" | tr '.' '-')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
       - uses: subosito/flutter-action@v2
         with:
@@ -37,17 +55,13 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      # Rename step to swap the generic output name for your custom one
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-v0-4-5.apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
 
-      # Uploads the custom-named raw APK straight to your repository Releases page
       - name: Upload Raw APK to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.run_number }}
-          name: "Virtual Gamepad Android Build #${{ github.run_number }}"
-          draft: false
-          prerelease: false
-          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad-v0-4-5.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
+          gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber

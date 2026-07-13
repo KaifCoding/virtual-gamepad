@@ -71,7 +71,7 @@ jobs:
         run: flutter pub get
 
       - name: Generate App Icons
-        run: dart run flutter_launcher_icons
+        run: flutter pub run flutter_launcher_icons
         env:
           FLUTTER_ROOT: ${{ steps.flutter.outputs.flutter_root }}
 

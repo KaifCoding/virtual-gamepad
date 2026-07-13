@@ -32,9 +32,9 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
 
-      # Compiles your installer using your optimized .iss configuration file
+      # Compiles the installer targeting your actual folder path
       - name: Build Installer Package
-        run: iscc installer.iss
+        run: iscc .\installer\setup.iss
 
       # Uploads the raw, unzipped Setup.exe straight to your repository Releases page
       - name: Upload Raw Installer to GitHub Releases
@@ -44,5 +44,4 @@ jobs:
           name: "Virtual Gamepad Host Build #${{ github.run_number }}"
           draft: false
           prerelease: false
-          # Points exactly to the updated windows-app/dist directory
           files: windows-app/dist/VirtualGamepadHost-Setup.exe

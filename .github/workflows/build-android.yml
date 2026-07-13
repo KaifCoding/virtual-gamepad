@@ -36,7 +36,6 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
-      # FIX 1: Added 'id: flutter' so the runner can map steps.flutter.outputs later
       - uses: subosito/flutter-action@v2
         id: flutter
         with:
@@ -45,6 +44,7 @@ jobs:
       - name: Scaffold native android/ project (safe to re-run)
         run: flutter create --platforms=android --org im.atomprod .
 
+      # Replaces default configuration boilerplate with your targeted native parameters
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 
@@ -72,41 +72,72 @@ jobs:
 
       - name: Generate App Icons
         run: flutter pub run flutter_launcher_icons
-        env:
-          FLUTTER_ROOT: ${{ steps.flutter.outputs.flutter_root }}
 
-      - name: Force application ID and Inject Signing Config
-        shell: bash
+      # FIX: Clean overwrite instead of string injection to prevent runtime app crashes
+      - name: Inject Secure Build Configuration Script
         run: |
-          set -e
-          GRADLE_KTS="android/app/build.gradle.kts"
-          GRADLE_GROOVY="android/app/build.gradle"
-          
-          if [ -f "$GRADLE_KTS" ]; then
-            # 1. Add imports to the VERY TOP of the file to prevent 'java' namespace shadowing inside the android block
-            sed -i '1s/^/import java.util.Properties\nimport java.io.FileInputStream\n\n/' "$GRADLE_KTS"
-            
-            # 2. Update IDs
-            sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
-            sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
-            
-            # 3. Inject Signing Configurations safely for Kotlin DSL (.kts) with EXPLICIT types
-            sed -i '/buildTypes {/i \
-            val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties.getProperty("keyAlias") as String\n        keyPassword = keystoreProperties.getProperty("keyPassword") as String\n        val sf = keystoreProperties.getProperty("storeFile") as String\n        storeFile = rootProject.file(sf)\n        storePassword = keystoreProperties.getProperty("storePassword") as String\n    }\n}\n' "$GRADLE_KTS"
-            
-            sed -i 's/getByName("release") {/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
-            
-          elif [ -f "$GRADLE_GROOVY" ]; then
-            # 1. Update IDs
-            sed -i -E 's/(applicationId\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
-            sed -i -E 's/(namespace\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
-            
-            # 2. Inject CLEAN Signing Configurations for Groovy (.gradle)
-            sed -i '/buildTypes {/i \
-            def keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    def keystoreProperties = new Properties()\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n    signingConfigs {\n        release {\n            keyAlias keystoreProperties["keyAlias"]\n            keyPassword keystoreProperties["keyPassword"]\n            storeFile rootProject.file(keystoreProperties["storeFile"])\n            storePassword keystoreProperties["storePassword"]\n        }\n    }\n}\n' "$GRADLE_GROOVY"
-            
-            sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }/' "$GRADLE_GROOVY"
-          fi
+          cat << 'EOF' > android/app/build.gradle.kts
+          import java.util.Properties
+          import java.io.FileInputStream
+
+          plugins {
+              id("com.android.application")
+              id("kotlin-android")
+              id("dev.flutter.flutter-gradle-plugin")
+          }
+
+          val keystoreProperties = Properties()
+          val keystorePropertiesFile = rootProject.file("key.properties")
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+          }
+
+          android {
+              namespace = "in.atomprod.vgamepad"
+              compileSdk = flutter.compileSdkVersion
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_1_8
+                  targetCompatibility = JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = "1.8"
+              }
+
+              defaultConfig {
+                  applicationId = "in.atomprod.vgamepad"
+                  minSdk = flutter.minSdkVersion
+                  targetSdk = flutter.targetSdkVersion
+                  versionCode = flutter.versionCode
+                  versionName = flutter.versionName
+              }
+
+              signingConfigs {
+                  create("release") {
+                      if (keystorePropertiesFile.exists()) {
+                          keyAlias = keystoreProperties.getProperty("keyAlias")
+                          keyPassword = keystoreProperties.getProperty("keyPassword")
+                          storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                          storePassword = keystoreProperties.getProperty("storePassword")
+                      }
+                  }
+              }
+
+              buildTypes {
+                  getByName("release") {
+                      // Apply the production keystore verification configuration securely
+                      signingConfig = signingConfigs.getByName("release")
+                      minifyEnabled = false
+                      shrinkResources = false
+                  }
+              }
+          }
+
+          flutter {
+              source = "../.."
+          }
+          EOF
 
       - name: Build release APK
         run: |

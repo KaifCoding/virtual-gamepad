@@ -23,7 +23,7 @@ jobs:
           channel: stable
 
       - name: Scaffold native android/ project (safe to re-run)
-        run: flutter create --platforms=android --org com.virtualgamepad .
+        run: flutter create --platforms=android --org im.atomprod .
 
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml

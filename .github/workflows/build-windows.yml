@@ -17,10 +17,7 @@ jobs:
         working-directory: windows-app
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Extract version string, falling back to v0.0.1 to stay perfectly aligned with Android
       - name: Extract Version Name
         id: get_version
         shell: pwsh
@@ -62,7 +59,7 @@ jobs:
         run: |
           Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "virtualGamepad-${{ env.FILE_VERSION }}.exe"
 
-      # Uploads to the exact same version target as the Android file without conflicts
+      # Uploads the raw, unzipped Setup installer directly to your target release zone
       - name: Upload Raw Installer to GitHub Releases
         shell: pwsh
         env:

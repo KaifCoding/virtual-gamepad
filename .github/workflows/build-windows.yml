@@ -28,18 +28,25 @@ jobs:
       - name: Publish App Binary
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
+      - name: Copy icon into publish output (needed by the installer script)
+        run: Copy-Item app_icon.ico publish\app_icon.ico
+        shell: pwsh
+
       - name: Install Inno Setup
-        run: choco install innosetup -y
+        run: choco install innosetup -y --no-progress
 
       - name: Build Installer Package
         run: iscc .\installer\setup.iss
 
-      # Uploads the raw, unzipped Setup installer directly to your target release zone
+      # Same fixed "latest" tag as build-android.yml - both workflows update
+      # this one release in place, so it always carries both files together
+      # instead of forking into separate v-number releases that only ever
+      # have one file each.
       - name: Upload Raw Installer to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: "Virtual Gamepad Host Build #${{ github.run_number }}"
+          tag_name: latest
+          name: "Virtual Gamepad - Latest Build"
           draft: false
           prerelease: false
           files: windows-app/dist/VirtualGamepadHost-Setup.exe

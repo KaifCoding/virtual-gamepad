@@ -31,7 +31,7 @@ jobs:
           } else {
               $tag = "v0.0.1"
           }
-          
+      
           $cleanVersion = $tag -replace '^v', ''
           $fileVersion = $cleanVersion -replace '\.', '-'
           

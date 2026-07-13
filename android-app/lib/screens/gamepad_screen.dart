@@ -1,3 +1,4 @@
+import 'dart:async'; // Added to handle stream subscriptions
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -21,6 +22,7 @@ class GamepadScreen extends StatefulWidget {
 
 class _GamepadScreenState extends State<GamepadScreen> {
   late final GamepadState _state;
+  StreamSubscription? _connectionSubscription; // Handles the socket listener state
 
   // Track D-pad states to only vibrate when a direction is freshly clicked down
   bool _upPressed = false;
@@ -47,10 +49,18 @@ class _GamepadScreenState extends State<GamepadScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+
+    // Listen for disconnections automatically from the socket network manager
+    _connectionSubscription = widget.socket.connectionStream.listen((isConnected) {
+      if (!isConnected) {
+        _handleConnectionLoss();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _connectionSubscription?.cancel(); // Cancel network listeners to prevent memory leaks
     _state.stop();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -60,10 +70,31 @@ class _GamepadScreenState extends State<GamepadScreen> {
     super.dispose();
   }
 
+  /// Automatically safely updates UI state and resets navigation back to the connection layout
+  void _handleConnectionLoss() {
+    if (!mounted) return;
+
+    // Fire an aggressive vibration alert so the user notices the drop immediately
+    HapticFeedback.heavyImpact();
+
+    // Notify the user via a quick temporary banner notification overlay
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Connection lost! Returning to menu...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // Clears any active popups or dialogs and steps cleanly back to the absolute base view
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   void _disconnect() {
     HapticFeedback.lightImpact();
     widget.socket.disconnect();
-    Navigator.of(context).pop();
+    // No explicit call to pop() is needed here anymore! 
+    // widget.socket.disconnect() will push a value to 'connectionStream', 
+    // triggering _handleConnectionLoss() naturally.
   }
 
   /// Handles standard button haptics cleanly — fires only on down-press

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'protocol.dart';
 
 enum ConnectionStatus { disconnected, connecting, connected, error }
@@ -159,6 +158,7 @@ class GamepadSocket {
     _heartbeatTimer = null;
     _pcAddress = null;
     _setStatus(ConnectionStatus.disconnected);
+
   }
 
   void dispose() {

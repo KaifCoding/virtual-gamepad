@@ -36,7 +36,9 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
+      # FIX 1: Added 'id: flutter' so the runner can map steps.flutter.outputs later
       - uses: subosito/flutter-action@v2
+        id: flutter
         with:
           channel: stable
 
@@ -70,6 +72,8 @@ jobs:
 
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
+        env:
+          FLUTTER_ROOT: ${{ steps.flutter.outputs.flutter_root }}
 
       - name: Force application ID and Inject Signing Config
         shell: bash
@@ -84,17 +88,17 @@ jobs:
             sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             
             # 2. Inject Signing Configurations safely for Kotlin DSL (.kts)
-            sed -i '/buildTypes \{/i \
+            sed -i '/buildTypes {/i \
             val keystorePropertiesFile = rootProject.file("key.properties")\nval keystoreProperties = java.util.Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))\n}\nsigningConfigs {\n    create("release") {\n        keyAlias = keystoreProperties["keyAlias"] as String?\n        keyPassword = keystoreProperties["keyPassword"] as String?\n        storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }\n        storePassword = keystoreProperties["storePassword"] as String?\n    }\n}\n' "$GRADLE_KTS"
             
-            sed -i 's/getByName("release") \{/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
+            sed -i 's/getByName("release") {/getByName("release") {\n            signingConfig = signingConfigs.getByName("release")/' "$GRADLE_KTS"
             
           elif [ -f "$GRADLE_GROOVY" ]; then
             # 1. Update IDs
             sed -i -E 's/(applicationId\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
             sed -i -E 's/(namespace\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
             
-            # 2. Inject CLEAN Signing Configurations for Groovy (.gradle) - NO "roles ->" typo
+            # 2. Inject CLEAN Signing Configurations for Groovy (.gradle)
             sed -i '/buildTypes {/i \
             def keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    def keystoreProperties = new Properties()\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n    signingConfigs {\n        release {\n            keyAlias keystoreProperties["keyAlias"]\n            keyPassword keystoreProperties["keyPassword"]\n            storeFile rootProject.file(keystoreProperties["storeFile"])\n            storePassword keystoreProperties["storePassword"]\n        }\n    }\n}\n' "$GRADLE_GROOVY"
             
@@ -119,4 +123,4 @@ jobs:
       - name: Clean up
         run: |
           rm -f android/app/release-key.jks android/key.properties
-          rm -rf build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+          rm -f build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk

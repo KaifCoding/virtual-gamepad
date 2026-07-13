@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/connect_screen.dart';
+import 'splash_screen.dart';
 
 void main() {
   runApp(const VirtualGamepadApp());
@@ -21,7 +21,7 @@ class VirtualGamepadApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const ConnectScreen(),
+      home: const SplashScreen(),
     );
   }
 }

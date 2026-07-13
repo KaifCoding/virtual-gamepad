@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../network/gamepad_socket.dart';
 import '../network/protocol.dart';
+import '../theme.dart';
 import 'gamepad_screen.dart';
 
 class ConnectScreen extends StatefulWidget {
@@ -111,89 +112,99 @@ class _ConnectScreenState extends State<ConnectScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1033), Color(0xFF0B0B14)],
+            colors: [AppColors.gradientTop, AppColors.gradientBottom],
           ),
         ),
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Icon(Icons.sports_esports, color: Colors.white),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                  children: [
+                    // Centered header, matching the design
+                    Column(
                       children: [
-                        Text('Virtual Gamepad',
-                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-                        Text('Free & open source · WiFi controller',
-                            style: TextStyle(color: Colors.white38, fontSize: 12)),
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.iconBg,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.sports_esports, color: Colors.white, size: 32),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('Virtual Gamepad',
+                            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text('FREE FOREVER · WIFI CONTROLLER',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.75),
+                              fontSize: 11.5,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.6,
+                            )),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              _SectionHeader(
-                title: 'Nearby PCs',
-                trailing: _found.isEmpty
-                    ? null
-                    : TextButton.icon(
-                        onPressed: () {
-                          setState(() => _found.clear());
-                          _startDiscovery();
-                        },
-                        icon: const Icon(Icons.refresh, size: 16, color: Colors.white54),
-                        label: const Text('Refresh', style: TextStyle(color: Colors.white54)),
+                    const SizedBox(height: 32),
+                    _SectionHeader(
+                      title: 'Nearby PCs',
+                      trailing: _found.isEmpty
+                          ? null
+                          : TextButton.icon(
+                              onPressed: () {
+                                setState(() => _found.clear());
+                                _startDiscovery();
+                              },
+                              icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
+                              label: const Text('Refresh', style: TextStyle(color: Colors.white70)),
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_found.isEmpty) _SearchingCard(seconds: _secondsSearching, onRetry: _startDiscovery),
+                    ..._found.values.map((h) => _HostCard(
+                          host: h,
+                          connecting: _connecting,
+                          onTap: _connecting ? null : () => _connectTo(h.address),
+                        )),
+                    const SizedBox(height: 28),
+                    const _SectionHeader(title: 'Enter PC IP manually'),
+                    const SizedBox(height: 10),
+                    _ManualEntryCard(
+                      controller: _ipController,
+                      connecting: _connecting,
+                      onConnect: () => _connectTo(_ipController.text.trim()),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                        ),
+                        child: Text(_error!,
+                            style: const TextStyle(color: Colors.white, fontSize: 12.5, height: 1.4)),
                       ),
-              ),
-              const SizedBox(height: 10),
-              if (_found.isEmpty) _SearchingCard(seconds: _secondsSearching, onRetry: _startDiscovery),
-              ..._found.values.map((h) => _HostCard(
-                    host: h,
-                    connecting: _connecting,
-                    onTap: _connecting ? null : () => _connectTo(h.address),
-                  )),
-              const SizedBox(height: 28),
-              const _SectionHeader(title: 'Enter PC IP manually'),
-              const SizedBox(height: 10),
-              _ManualEntryCard(
-                controller: _ipController,
-                connecting: _connecting,
-                onConnect: () => _connectTo(_ipController.text.trim()),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-                  ),
-                  child: Text(_error!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12.5, height: 1.4)),
+                    ],
+                    if (_myAddresses.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text('This phone: ${_myAddresses.join(", ")}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                    ],
+                  ],
                 ),
-              ],
-              if (_myAddresses.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Text('This phone: ${_myAddresses.join(", ")}',
-                    style: const TextStyle(color: Colors.white24, fontSize: 11)),
-              ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18, top: 8),
+                child: Text(
+                  'Copyright © 2026 Atomprod',
+                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5),
+                ),
+              ),
             ],
           ),
         ),
@@ -212,7 +223,7 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Text(title,
-            style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
         const Spacer(),
         if (trailing != null) trailing!,
       ],
@@ -231,9 +242,8 @@ class _SearchingCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
@@ -242,34 +252,34 @@ class _SearchingCard extends StatelessWidget {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Searching your WiFi network for PCs running Virtual Gamepad Host...',
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13),
                 ),
               ),
             ],
           ),
           if (stuck) ...[
             const SizedBox(height: 14),
-            const Divider(color: Colors.white12, height: 1),
+            Divider(color: Colors.white.withOpacity(0.2), height: 1),
             const SizedBox(height: 12),
             Text(
               "Not finding it? Some routers block automatic discovery (guest WiFi, "
               "mesh networks, or \"AP isolation\" settings). Enter the PC's IP shown "
-              "in its console window below instead - it always works.",
-              style: TextStyle(color: Colors.amber.withOpacity(0.85), fontSize: 12, height: 1.4),
+              "in its window below instead - it always works.",
+              style: TextStyle(color: Colors.amber.shade100, fontSize: 12, height: 1.4),
             ),
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Search again'),
+                icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                label: const Text('Search again', style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
@@ -290,41 +300,41 @@ class _HostCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: Colors.white.withOpacity(0.05),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.14),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF6366F1).withOpacity(0.18),
+                    color: const Color(0xFF6B7280),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.computer, color: Color(0xFF9F8CFF), size: 20),
+                  child: const Icon(Icons.desktop_windows_rounded, color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(host.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                      Text(host.address, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      Text(host.name,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(host.address, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12.5)),
                     ],
                   ),
                 ),
                 connecting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white30),
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white.withOpacity(0.6)),
               ],
             ),
           ),
@@ -343,11 +353,10 @@ class _ManualEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -355,15 +364,15 @@ class _ManualEntryCard extends StatelessWidget {
           TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white70),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.dns_outlined, color: Colors.white38, size: 20),
-              hintText: '192.168.1.42',
-              hintStyle: const TextStyle(color: Colors.white24),
+              prefixIcon: const Icon(Icons.dns_rounded, color: Colors.white70, size: 20),
+              hintText: '10.25.224.56',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              fillColor: Colors.black.withOpacity(0.18),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
           const SizedBox(height: 10),
@@ -373,17 +382,19 @@ class _ManualEntryCard extends StatelessWidget {
               final hasText = value.text.trim().isNotEmpty;
               return SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    backgroundColor: Colors.black.withOpacity(0.18),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: connecting || !hasText ? null : onConnect,
                   child: connecting
                       ? const SizedBox(
                           width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Connect', style: TextStyle(fontWeight: FontWeight.w600)),
+                      : const Text('CONNECT',
+                          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.white)),
                 ),
               );
             },

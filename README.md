@@ -9,8 +9,11 @@
 [![Build Windows Host](https://img.shields.io/badge/CI-Windows%20Host-0078D6?logo=windows&logoColor=white)](.github/workflows/build-windows.yml)
 [![Made with Flutter](https://img.shields.io/badge/Made%20with-Flutter-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Made with .NET](https://img.shields.io/badge/Made%20with-.NET%208-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a-coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/kaifcoding)
 
 </div>
+
+> **Created by [kaifcoding](https://github.com/kaifcoding)** · © 2026 **Atomprod**. Free forever, MIT licensed — see [Credits & License](#-credits--license) below.
 
 ---
 
@@ -63,7 +66,7 @@ Copy `app-release.apk` to your phone and tap it. Android will ask permission to 
 ### 🖥️ Set up your PC
 
 1. Install **[ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases/latest)** once — this is the driver that makes Windows see your phone as a real controller. Reboot if prompted.
-2. Run `VirtualGamepadHost.exe`. A console window prints your PC's IP address.
+2. Run `VirtualGamepadHost.exe`. A branded window opens showing your PC's IP address(es) — that's what you'll enter (or auto-discover) from the phone. Click "Show connection log" to see live connection activity.
 3. Allow the app through **Windows Firewall** when prompted (check all network types — Domain, Private, *and* Public). If the prompt never appears, run [`windows-app/open-firewall-port.ps1`](windows-app/open-firewall-port.ps1) as Administrator to open the port manually.
 
 ### 🔗 Connect
@@ -132,15 +135,28 @@ This runs over UDP on WiFi, so it depends on your router and network congestion.
 - [x] WiFi transport (UDP), full Xbox 360 button/axis mapping
 - [x] Auto-discovery of PCs on the local network
 - [x] Multiple phones connecting simultaneously
+- [x] Windows host with a proper branded GUI window (not just a console)
 - [ ] Bluetooth transport (fallback when there's no shared WiFi network)
 - [ ] Customizable button layout / remapping in-app
 - [ ] Rumble/vibration feedback from PC back to phone
-- [ ] Windows tray icon + proper GUI (currently a console window)
+- [ ] Windows tray icon (minimize-to-tray)
 - [ ] iOS build (Flutter already supports it; needs a paid Apple developer account for signing, which free CI can't provide)
 
 ## 🤝 Contributing
 
 Issues and pull requests welcome. It's all MIT licensed — use it, fork it, remix it, sell it, whatever helps you.
+
+## ☕ Support this project
+
+If Virtual Gamepad saved you the cost of a real controller, consider buying the maintainer a coffee:
+
+<a href="https://buymeacoffee.com/kaifcoding" target="_blank"><img src="https://img.shields.io/badge/Buy%20me%20a-coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
+
+*(Points at `buymeacoffee.com/kaifcoding` as a placeholder — swap in the real page if that handle isn't yours.)* It's entirely optional and doesn't unlock anything — every feature stays free for everyone either way.
+
+## 🙌 Credits
+
+Created with ❤️ by [kaifcoding](https://github.com/kaifcoding) · © 2026 Atomprod. See [NOTICE](NOTICE) for attribution terms if you fork or redistribute this project.
 
 ## 📄 License
 

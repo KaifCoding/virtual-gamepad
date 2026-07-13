@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// A vertical pressure-style slider for LT/RT. Drag down = more pressure,
-/// releasing snaps back to 0, matching a spring-loaded analog trigger.
+import '../theme.dart';
+
+/// A circular pressure-style analog trigger for LT/RT, matching the design's
+/// large round trigger buttons. Drag down within the circle = more
+/// pressure; releasing snaps back to 0, matching a spring-loaded analog
+/// trigger. The fill rises from the bottom like a gauge.
 class TriggerWidget extends StatefulWidget {
   final String label;
-  final double width;
-  final double height;
+  final double size;
   final void Function(double value) onChanged;
 
   const TriggerWidget({
     super.key,
     required this.label,
     required this.onChanged,
-    this.width = 56,
-    this.height = 90,
+    this.size = 90,
   });
 
   @override
@@ -24,7 +26,7 @@ class _TriggerWidgetState extends State<TriggerWidget> {
   double _value = 0;
 
   void _update(Offset local) {
-    final v = (local.dy / widget.height).clamp(0.0, 1.0);
+    final v = (local.dy / widget.size).clamp(0.0, 1.0);
     setState(() => _value = v);
     widget.onChanged(v);
   }
@@ -41,29 +43,34 @@ class _TriggerWidgetState extends State<TriggerWidget> {
       onPanUpdate: (d) => _update(d.localPosition),
       onPanEnd: (_) => _reset(),
       onPanCancel: _reset,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: widget.width,
-            height: widget.height,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.stickFill,
+        ),
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            FractionallySizedBox(
+              heightFactor: _value.clamp(0.06, 1.0),
+              widthFactor: 1,
+              child: Container(color: Colors.white.withOpacity(0.55)),
             ),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                heightFactor: _value,
-                child: Container(color: Colors.white.withOpacity(0.75)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 0),
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(widget.label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-        ],
+          ],
+        ),
       ),
     );
   }

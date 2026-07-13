@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/gamepad_state.dart';
 import '../network/gamepad_socket.dart';
 import '../network/protocol.dart';
+import '../theme.dart';
 import '../widgets/dpad_widget.dart';
 import '../widgets/gamepad_button_widget.dart';
 import '../widgets/joystick_widget.dart';
@@ -51,13 +52,13 @@ class _GamepadScreenState extends State<GamepadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B14),
+      backgroundColor: AppColors.gamepadBottom,
       body: Container(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.4,
-            colors: [Color(0xFF1A1033), Color(0xFF0B0B14)],
+            colors: [AppColors.gamepadTop, AppColors.gamepadBottom],
           ),
         ),
         child: SafeArea(
@@ -93,8 +94,8 @@ class _GamepadScreenState extends State<GamepadScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          TriggerWidget(label: 'LT', onChanged: (v) => _state.setLeftTrigger(v)),
-                          TriggerWidget(label: 'RT', onChanged: (v) => _state.setRightTrigger(v)),
+                          TriggerWidget(label: 'LT', size: 70, onChanged: (v) => _state.setLeftTrigger(v)),
+                          TriggerWidget(label: 'RT', size: 70, onChanged: (v) => _state.setRightTrigger(v)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -105,12 +106,14 @@ class _GamepadScreenState extends State<GamepadScreen> {
                             label: 'LB',
                             pill: true,
                             size: 26,
+                            color: AppColors.stickFill,
                             onChanged: (p) => _state.setButton(Protocol.bitLb, p),
                           ),
                           GamepadButtonWidget(
                             label: 'RB',
                             pill: true,
                             size: 26,
+                            color: AppColors.stickFill,
                             onChanged: (p) => _state.setButton(Protocol.bitRb, p),
                           ),
                         ],
@@ -123,15 +126,25 @@ class _GamepadScreenState extends State<GamepadScreen> {
                             label: 'BACK',
                             pill: true,
                             size: 22,
+                            color: AppColors.stickFill,
                             onChanged: (p) => _state.setButton(Protocol.bitBack, p),
                           ),
                           GamepadButtonWidget(
                             label: 'START',
                             pill: true,
                             size: 22,
+                            color: AppColors.stickFill,
                             onChanged: (p) => _state.setButton(Protocol.bitStart, p),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 20),
+                      GamepadButtonWidget(
+                        label: '',
+                        size: 34,
+                        color: AppColors.stickFill,
+                        onChanged: (p) => _state.setButton(Protocol.bitGuide, p),
+                        icon: Icons.sports_esports,
                       ),
                     ],
                   ),
@@ -186,7 +199,7 @@ class _FaceButtons extends StatelessWidget {
             top: 0,
             child: GamepadButtonWidget(
               label: 'Y',
-              color: Colors.amber,
+              color: AppColors.buttonY,
               onChanged: (p) => state.setButton(Protocol.bitY, p),
             ),
           ),
@@ -194,7 +207,7 @@ class _FaceButtons extends StatelessWidget {
             bottom: 0,
             child: GamepadButtonWidget(
               label: 'A',
-              color: Colors.green,
+              color: AppColors.buttonA,
               onChanged: (p) => state.setButton(Protocol.bitA, p),
             ),
           ),
@@ -202,7 +215,7 @@ class _FaceButtons extends StatelessWidget {
             left: 0,
             child: GamepadButtonWidget(
               label: 'X',
-              color: Colors.blue,
+              color: AppColors.buttonX,
               onChanged: (p) => state.setButton(Protocol.bitX, p),
             ),
           ),
@@ -210,7 +223,7 @@ class _FaceButtons extends StatelessWidget {
             right: 0,
             child: GamepadButtonWidget(
               label: 'B',
-              color: Colors.red,
+              color: AppColors.buttonB,
               onChanged: (p) => state.setButton(Protocol.bitB, p),
             ),
           ),

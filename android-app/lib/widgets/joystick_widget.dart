@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 /// A self-contained analog joystick. Reports normalized (x, y) in [-1, 1]
 /// via [onChanged], with y positive = up (already flipped from screen
 /// coordinates) to match typical gamepad axis conventions.
@@ -25,7 +27,7 @@ class _JoystickWidgetState extends State<JoystickWidget> {
   void _updateFromLocal(Offset localPos, double radius) {
     final center = Offset(radius, radius);
     var delta = localPos - center;
-    final maxLen = radius - 20; // leave room so knob doesn't clip
+    final maxLen = radius - 26; // leave room so knob doesn't clip
     if (delta.distance > maxLen) {
       delta = Offset.fromDirection(delta.direction, maxLen);
     }
@@ -54,21 +56,19 @@ class _JoystickWidgetState extends State<JoystickWidget> {
           child: Container(
             width: widget.size,
             height: widget.size,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.06),
-              border: Border.all(color: Colors.white.withOpacity(0.25), width: 2),
+              color: AppColors.stickFill,
             ),
             child: Center(
               child: Transform.translate(
                 offset: _knob,
                 child: Container(
-                  width: widget.size * 0.42,
-                  height: widget.size * 0.42,
-                  decoration: BoxDecoration(
+                  width: widget.size * 0.5,
+                  height: widget.size * 0.5,
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.85),
-                    boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black45)],
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -77,7 +77,7 @@ class _JoystickWidgetState extends State<JoystickWidget> {
         ),
         if (widget.label != null) ...[
           const SizedBox(height: 4),
-          Text(widget.label!, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+          Text(widget.label!, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
         ]
       ],
     );

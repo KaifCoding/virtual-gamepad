@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Required to securely post assets to GitHub Releases
+  contents: write
 
 jobs:
   build:
@@ -18,18 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full history so we can read commits accurately
+          fetch-depth: 0
 
-      # Extracts dynamic version from commit message (defaults to 'latest' if none found)
+      # Extract version string, falling back to 0.0.1 instead of "latest" to prevent platform errors
       - name: Extract Version Name
         id: get_version
-        working-directory: . # OVERRIDE: Allows access to git logs at repository root
+        working-directory: .
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           TAG=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
           
           if [ -z "$TAG" ]; then
-            TAG="latest"
+            TAG="v0.0.1"
           fi
           
           CLEAN_VERSION=$(echo "$TAG" | sed 's/^v//')
@@ -42,7 +42,7 @@ jobs:
         with:
           channel: stable
 
-      - name: Scaffold native android/ project (safe to re-run)
+      - name: Scaffold native android/ project
         run: flutter create --platforms=android --org im.atomprod .
 
       - name: Apply our AndroidManifest (permissions + orientation)
@@ -54,7 +54,6 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      # Locks down the application package namespace explicitly before compile blocks run
       - name: Force application ID to im.atomprod.vgamepad
         shell: bash
         run: |
@@ -69,7 +68,7 @@ jobs:
             sed -i -E 's/(namespace\s+)"[^"]*"/\1"im.atomprod.vgamepad"/' "$GRADLE_GROOVY"
           fi
 
-      # FIX: Inject your commit version as the display name, and unique run counter as internal code
+      # Build with distinct naming tracking parameters
       - name: Build release APK
         run: |
           flutter build apk --release --build-name=${{ env.RELEASE_TAG }} --build-number=${{ github.run_number }}
@@ -78,7 +77,7 @@ jobs:
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
 
-      # Uses native GitHub CLI to upload the APK safely to the matching release zone
+      # Explicitly targeting distinct assets safely without corrupting concurrent workflows
       - name: Upload Raw APK to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

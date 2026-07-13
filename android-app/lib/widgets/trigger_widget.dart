@@ -6,6 +6,7 @@ import '../theme.dart';
 /// large round trigger buttons. Drag down within the circle = more
 /// pressure; releasing snaps back to 0, matching a spring-loaded analog
 /// trigger. The fill rises from the bottom like a gauge.
+/// 
 class TriggerWidget extends StatefulWidget {
   final String label;
   final double size;

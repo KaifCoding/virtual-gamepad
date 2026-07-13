@@ -2,6 +2,7 @@ using System.Windows;
 
 namespace VirtualGamepadHost;
 
-public partial class App : Application
+// Explicitly define System.Windows.Application to stop the compiler fight
+public partial class App : System.Windows.Application
 {
 }

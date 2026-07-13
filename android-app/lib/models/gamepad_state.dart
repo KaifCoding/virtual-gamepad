@@ -3,10 +3,7 @@ import 'dart:async';
 import '../network/gamepad_socket.dart';
 import '../network/protocol.dart';
 
-/// Holds the live state of every button/stick/trigger and streams it to the
-/// PC at a fixed rate. UI widgets call the set* methods on press/drag; a
-/// Timer.periodic loop reads the current state and sends a packet, so
-/// analog sticks feel smooth even if the UI only rebuilds at a lower rate.
+
 class GamepadState {
   final GamepadSocket socket;
   Timer? _ticker;

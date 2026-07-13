@@ -11,11 +11,6 @@ import '../widgets/gamepad_button_widget.dart';
 import '../widgets/joystick_widget.dart';
 import '../widgets/trigger_widget.dart';
 
-/// Matches the exact control layout from the reference mockup: LT/RB/D-pad
-/// stacked on the far left, a Back/Guide/Start icon row + L3/R3 pills in the
-/// upper middle, dual sticks either side of center, RB/RT on the upper
-/// right, and the ABXY diamond on the lower right. Landscape-only - see
-/// initState/dispose.
 class GamepadScreen extends StatefulWidget {
   final GamepadSocket socket;
   const GamepadScreen({super.key, required this.socket});
@@ -26,6 +21,12 @@ class GamepadScreen extends StatefulWidget {
 
 class _GamepadScreenState extends State<GamepadScreen> {
   late final GamepadState _state;
+
+  // Track D-pad states locally to only vibrate when a direction is freshly clicked down
+  bool _upPressed = false;
+  bool _downPressed = false;
+  bool _leftPressed = false;
+  bool _rightPressed = false;
 
   @override
   void initState() {
@@ -45,9 +46,6 @@ class _GamepadScreenState extends State<GamepadScreen> {
     _state.stop();
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // Every other screen in the app is portrait-only, so lock straight back
-    // to portrait here rather than "allow everything" - avoids a frame or
-    // two of sideways UI while ConnectScreen's own re-lock kicks in.
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
@@ -55,13 +53,20 @@ class _GamepadScreenState extends State<GamepadScreen> {
   }
 
   void _disconnect() {
+    HapticFeedback.mediumImpact(); // Distinct, clean confirmation thump for disconnecting
     widget.socket.disconnect();
     Navigator.of(context).pop();
   }
 
-  /// Positions a child using fractional (0-1) coordinates of the *center*
-  /// of the control, matching how the reference mockup was measured, so
-  /// the whole layout scales cleanly across phone screen sizes.
+  /// Handles standard button haptics cleanly — only fires on down-press, ignoring the release
+  void _handleButtonPress(int buttonBit, bool isPressed) {
+    if (isPressed) {
+      HapticFeedback.lightImpact(); // Subtle mechanical micro-switch tick
+    }
+    _state.setButton(buttonBit, isPressed);
+  }
+
+  /// Positions a child using fractional (0-1) coordinates
   Widget _at(BoxConstraints c, double xFrac, double yFrac, double w, double h, Widget child) {
     final left = c.maxWidth * xFrac - w / 2;
     final top = c.maxHeight * yFrac - h / 2;
@@ -86,29 +91,43 @@ class _GamepadScreenState extends State<GamepadScreen> {
               final c = constraints;
               return Stack(
                 children: [
-                  // LT - top left, biggest circle on that side
+                  // LT - Left Trigger
                   _at(c, 0.078, 0.182, 112, 112,
                       TriggerWidget(label: 'LT', size: 112, onChanged: (v) => _state.setLeftTrigger(v))),
 
-                  // LB - below LT
+                  // LB - Left Bumper
                   _at(c, 0.184, 0.339, 70, 70,
                       GamepadButtonWidget(
                         label: 'LB',
                         size: 70,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitLb, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitLb, p),
                       )),
 
-                  // D-pad - lower left
+                  // D-pad - Lower Left
                   _at(c, 0.112, 0.620, 180, 180,
                       DpadWidget(
                         size: 150,
                         onChanged: ({required up, required down, required left, required right}) {
+                          // Check if any direction changed from false to true to emit a micro-tick
+                          if ((up && !_upPressed) || 
+                              (down && !_downPressed) || 
+                              (left && !_leftPressed) || 
+                              (right && !_rightPressed)) {
+                            HapticFeedback.selectionClick(); // Ultra-light mechanical tick for D-pad shifts
+                          }
+                          
+                          // Save current flags
+                          _upPressed = up;
+                          _downPressed = down;
+                          _leftPressed = left;
+                          _rightPressed = right;
+
                           _state.setDpad(up: up, down: down, left: left, right: right);
                         },
                       )),
 
-                  // Disconnect - small circle, top center
+                  // Disconnect - Top Center
                   _at(c, 0.470, 0.068, 50, 50,
                       GestureDetector(
                         onTap: _disconnect,
@@ -116,19 +135,19 @@ class _GamepadScreenState extends State<GamepadScreen> {
                           width: 50,
                           height: 50,
                           alignment: Alignment.center,
-                          decoration: BoxDecoration(color: AppColors.stickFill, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: AppColors.stickFill, shape: BoxShape.circle),
                           child: const Icon(Icons.close, color: Colors.white, size: 22),
                         ),
                       )),
 
-                  // Back / Guide / Start row - upper middle
+                  // Menu / Guide / Start Row
                   _at(c, 0.371, 0.242, 60, 60,
                       GamepadButtonWidget(
                         label: '',
                         icon: Icons.menu,
                         size: 60,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitBack, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitBack, p),
                       )),
                   _at(c, 0.470, 0.242, 68, 68,
                       GamepadButtonWidget(
@@ -136,7 +155,7 @@ class _GamepadScreenState extends State<GamepadScreen> {
                         icon: Icons.sports_esports,
                         size: 68,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitGuide, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitGuide, p),
                       )),
                   _at(c, 0.570, 0.242, 60, 60,
                       GamepadButtonWidget(
@@ -144,17 +163,17 @@ class _GamepadScreenState extends State<GamepadScreen> {
                         icon: Icons.tune,
                         size: 60,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitStart, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitStart, p),
                       )),
 
-                  // L3 / R3 - pills just above the sticks
+                  // L3 / R3 Stick Clicks
                   _at(c, 0.416, 0.475, 90, 56,
                       GamepadButtonWidget(
                         label: 'LEFT',
                         pill: true,
                         size: 40,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitLsClick, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitLsClick, p),
                       )),
                   _at(c, 0.526, 0.475, 90, 56,
                       GamepadButtonWidget(
@@ -162,32 +181,31 @@ class _GamepadScreenState extends State<GamepadScreen> {
                         pill: true,
                         size: 40,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitRsClick, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitRsClick, p),
                       )),
 
-                  // Left stick
+                  // Joysticks don't vibrate standardly on move events to avoid constant rattling
                   _at(c, 0.310, 0.751, 160, 160,
                       JoystickWidget(size: 160, onChanged: (x, y) => _state.setLeftStick(x, y))),
-
-                  // Right stick
                   _at(c, 0.685, 0.751, 160, 160,
                       JoystickWidget(size: 160, onChanged: (x, y) => _state.setRightStick(x, y))),
 
-                  // RB - upper right
+                  // RB - Upper Right
                   _at(c, 0.815, 0.346, 70, 70,
                       GamepadButtonWidget(
                         label: 'RB',
                         size: 70,
                         color: AppColors.stickFill,
-                        onChanged: (p) => _state.setButton(Protocol.bitRb, p),
+                        onChanged: (p) => _handleButtonPress(Protocol.bitRb, p),
                       )),
 
-                  // RT - top right corner, biggest circle on that side
+                  // RT - Right Trigger
                   _at(c, 0.922, 0.182, 112, 112,
                       TriggerWidget(label: 'RT', size: 112, onChanged: (v) => _state.setRightTrigger(v))),
 
-                  // ABXY diamond
-                  _at(c, 0.890, 0.620, 150, 150, _FaceButtons(state: _state, size: 150)),
+                  // ABXY Diamond Layout
+                  _at(c, 0.890, 0.620, 150, 150, 
+                      _FaceButtons(onButtonPressed: _handleButtonPress, size: 150)),
                 ],
               );
             },
@@ -197,10 +215,11 @@ class _GamepadScreenState extends State<GamepadScreen> {
     );
   }
 }
+
 class _FaceButtons extends StatelessWidget {
-  final GamepadState state;
+  final void Function(int buttonBit, bool isPressed) onButtonPressed;
   final double size;
-  const _FaceButtons({required this.state, required this.size});
+  const _FaceButtons({required this.onButtonPressed, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +234,7 @@ class _FaceButtons extends StatelessWidget {
             child: GamepadButtonWidget(
               label: 'Y',
               color: AppColors.buttonY,
-              onChanged: (p) => state.setButton(Protocol.bitY, p),
+              onChanged: (p) => onButtonPressed(Protocol.bitY, p),
             ),
           ),
           Positioned(
@@ -223,7 +242,7 @@ class _FaceButtons extends StatelessWidget {
             child: GamepadButtonWidget(
               label: 'A',
               color: AppColors.buttonA,
-              onChanged: (p) => state.setButton(Protocol.bitA, p),
+              onChanged: (p) => onButtonPressed(Protocol.bitA, p),
             ),
           ),
           Positioned(
@@ -231,7 +250,7 @@ class _FaceButtons extends StatelessWidget {
             child: GamepadButtonWidget(
               label: 'X',
               color: AppColors.buttonX,
-              onChanged: (p) => state.setButton(Protocol.bitX, p),
+              onChanged: (p) => onButtonPressed(Protocol.bitX, p),
             ),
           ),
           Positioned(
@@ -239,7 +258,7 @@ class _FaceButtons extends StatelessWidget {
             child: GamepadButtonWidget(
               label: 'B',
               color: AppColors.buttonB,
-              onChanged: (p) => state.setButton(Protocol.bitB, p),
+              onChanged: (p) => onButtonPressed(Protocol.bitB, p),
             ),
           ),
         ],

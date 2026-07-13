@@ -19,7 +19,7 @@ class ConnectScreen extends StatefulWidget {
 class _ConnectScreenState extends State<ConnectScreen> {
   final GamepadSocket _socket = GamepadSocket();
   final TextEditingController _ipController = TextEditingController();
-  final Map<String, DiscoveredHost> _found = {}; // address -> host
+  final Map<String, DiscoveredHost> _found = {}; 
   Timer? _discoverTimer;
   Timer? _searchClock;
   StreamSubscription? _discoverSub;
@@ -32,14 +32,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   @override
   void initState() {
     super.initState();
-    // This screen is portrait-only; only the in-game GamepadScreen locks to
-    // landscape. Re-asserted here (not just in SplashScreen) because we can
-    // land on this screen directly after disconnecting from a landscape
-    // gamepad session.
-    Navigator.of(context)
-          .push(MaterialPageRoute(
-        builder: (_) => GamepadScreen(socket: _socket),
-      ));
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);

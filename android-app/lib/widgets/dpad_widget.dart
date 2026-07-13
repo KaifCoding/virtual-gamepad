@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:virtual_gamepad/theme.dart';
-// Placeholder colors matching a typical dark/sleek theme. 
-// Replace these with your actual AppColors values if needed!
 
 class DpadWidget extends StatefulWidget {
   final double size;

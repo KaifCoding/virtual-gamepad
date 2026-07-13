@@ -129,13 +129,15 @@
 
                 <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,18">
                     <TextBlock HorizontalAlignment="Center" FontSize="12" Foreground="#6B7280">
-                        <Run Text="Created With "/>
-                        <Run Text="&#9829;" Foreground="#DC2626"/>
-                        <Run Text=" by "/>
-                        <Hyperlink NavigateUri="https://github.com/kaifcoding" RequestNavigate="Hyperlink_RequestNavigate">kaifcoding</Hyperlink>
+                        <Run Text="Created With"/>
+                        <Run Text="&#9829;" Foreground="#6B7280"/>
+                        <Run Text="by "/>
+                        <Hyperlink NavigateUri="https://github.com/kaifcoding" RequestNavigate="Hyperlink_RequestNavigate">Mohammad Kaif</Hyperlink>
                     </TextBlock>
                     <TextBlock HorizontalAlignment="Center" FontSize="12" Foreground="#6B7280" Margin="0,2,0,0">
-                        <Run Text="© 2026 Atomprod. All rights reserved."/>
+                        <Run Text="© 2026 "/>
+                        <Hyperlink NavigateUri="https://www.atomprod.in" RequestNavigate="Hyperlink_RequestNavigate">Atomprod</Hyperlink>
+                        <Run Text=". All rights reserved."/>
                     </TextBlock>
                 </StackPanel>
             </Grid>

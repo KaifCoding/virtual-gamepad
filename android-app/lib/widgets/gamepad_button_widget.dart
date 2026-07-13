@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// A round (or pill-shaped) button that reports press/release rather than
-/// just tap, which is what a gamepad button needs (held == active). Solid
-/// fill by default, brightening slightly on press, matching the design's
-/// bold saturated button style.
+
 class GamepadButtonWidget extends StatefulWidget {
   final String label;
   final Color color;

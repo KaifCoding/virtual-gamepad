@@ -9,9 +9,9 @@
     <RootNamespace>VirtualGamepadHost</RootNamespace>
     <AssemblyName>VirtualGamepadHost</AssemblyName>
     <ApplicationIcon>app_icon.ico</ApplicationIcon>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <SelfContained>false</SelfContained>
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Resource Include="app_icon.png" />
+    <Resource Include="app_icon.ico" />
   </ItemGroup>
 
 </Project>

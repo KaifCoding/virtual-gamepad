@@ -21,6 +21,21 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      
+      - name: Extract Version Name
+        id: get_version
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+          
+          if [ -z "$VERSION" ]; then
+            VERSION="latest"
+          fi
+          
+          FILE_VERSION=$(echo "$VERSION" | tr '.' '-')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
+
 
       - name: Scaffold native android/ project (safe to re-run)
         run: flutter create --platforms=android --org in.atomprod .

@@ -71,3 +71,6 @@ app.*.map.json
 analysis_options.yaml
 pubspec.yaml
 widget_test.dart
+
+release-key.jks
+keystore_base64.txt

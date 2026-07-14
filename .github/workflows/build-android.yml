@@ -42,7 +42,7 @@ jobs:
           channel: stable
 
       - name: Scaffold native android/ project (safe to re-run)
-        run: flutter create --platforms=android --org im.atomprod .
+        run: flutter create --platforms=android --org in.atomprod .
 
       # Replaces default configuration boilerplate with your targeted native parameters
       - name: Apply our AndroidManifest (permissions + orientation)

@@ -48,7 +48,6 @@ jobs:
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 
-      # FIX: Changed path from android/app/release-key.jks to android/release-key.jks
       - name: Decode and Inject Production Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -74,10 +73,10 @@ jobs:
       - name: Generate App Icons
         run: flutter pub run flutter_launcher_icons
 
-      # FIX: Updated to support clean modern Kotlin DSL (with isMinifyEnabled and compilerOptions block)
+      # FIX: Removed literal quotes from EOF to allow variable injection & changed versionCode to run_number
       - name: Inject Secure Build Configuration Script
         run: |
-          cat << 'EOF' > android/app/build.gradle.kts
+          cat << EOF > android/app/build.gradle.kts
           import java.util.Properties
           import java.io.FileInputStream
           import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -107,8 +106,9 @@ jobs:
                   applicationId = "in.atomprod.vgamepad"
                   minSdk = flutter.minSdkVersion
                   targetSdk = flutter.targetSdkVersion
-                  versionCode = ${{ env.FILE_VERSION }}
-                  versionName = "${{env.RELEASE_TAG}}"
+                  
+                  versionCode = ${{ github.run_number }}
+                  versionName = "${{ env.RELEASE_TAG }}"
               }
 
               signingConfigs {
@@ -157,7 +157,8 @@ jobs:
           gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production rolling build." || true
           gh release upload ${{ env.RELEASE_TAG }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
 
+      # FIX: Adjusted path mapping cleanup to ensure we clean root file structure properly
       - name: Clean up
         run: |
-          rm -f android/app/release-key.jks android/key.properties
+          rm -f android/release-key.jks android/key.properties
           rm -f build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk

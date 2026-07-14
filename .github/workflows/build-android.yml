@@ -3,6 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+    paths: ["android-app/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -16,52 +17,16 @@ jobs:
         working-directory: android-app
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Extract Version Name
-        id: get_version
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-          
-          if [ -z "$VERSION" ]; then
-            VERSION="latest"
-          fi
-          
-          FILE_VERSION=$(echo "$VERSION" | tr '.' '-')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          
-      # 2. Inject the compiler-escaped `in`.atomprod namespace directly into the Gradle configurations
-      - name: Scaffold native android/ project
+
+      - name: Scaffold native android/ project (safe to re-run)
         run: flutter create --platforms=android --org in.atomprod .
 
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-
-      - name: Decode Production Keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "ERROR: ANDROID_KEYSTORE_BASE64 secret is missing!" >&2
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
-
-      - name: Configure Gradle Signing Properties
-        run: |
-          cat <<EOF > android/key.properties
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=release-key.jks
-          EOF
 
       - name: Get packages
         run: flutter pub get
@@ -69,22 +34,53 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      - name: Build release APK
+      - name: Force application ID to in.atomprod.vgamepad (Gradle + source file)
+        shell: bash
         run: |
-          flutter build apk --release --build-name=${{ env.VERSION }} --build-number=${{ github.run_number }}
+          set -e
+          GRADLE_KTS="android/app/build.gradle.kts"
+          GRADLE_GROOVY="android/app/build.gradle"
+          if [ -f "$GRADLE_KTS" ]; then
+            sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
+            sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
+          elif [ -f "$GRADLE_GROOVY" ]; then
+            sed -i -E 's/(applicationId\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
+            sed -i -E 's/(namespace\s+)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_GROOVY"
+          else
+            echo "Could not find app/build.gradle(.kts)" >&2
+            exit 1
+          fi
+
+          # The applicationId/namespace above only affects Gradle metadata.
+          # The actual MainActivity.kt source file (and its `package`
+          # declaration) also has to move to match, or Android can't find
+          # the launcher activity at runtime and crashes on open.
+          MAIN_ACTIVITY=$(find android/app/src/main -type f \( -iname "MainActivity.kt" -o -iname "MainActivity.java" \) | head -n1)
+          if [ -z "$MAIN_ACTIVITY" ]; then
+            echo "Could not find MainActivity.kt/.java" >&2
+            exit 1
+          fi
+          SRC_ROOT=$(echo "$MAIN_ACTIVITY" | sed -E 's#(android/app/src/main/(kotlin|java))/.*#\1#')
+          EXT="${MAIN_ACTIVITY##*.}"
+          NEW_DIR="$SRC_ROOT/in/atomprod/vgamepad"
+          mkdir -p "$NEW_DIR"
+          mv "$MAIN_ACTIVITY" "$NEW_DIR/MainActivity.$EXT"
+          sed -i -E "s/^package .*/package in.atomprod.vgamepad/" "$NEW_DIR/MainActivity.$EXT"
+          echo "MainActivity moved to: $NEW_DIR/MainActivity.$EXT"
+          cat "$NEW_DIR/MainActivity.$EXT"
+
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
 
       - name: Upload Raw APK to GitHub Releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
-          gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
-
-      - name: Clean up
-        run: |
-          rm -f android/app/release-key.jks android/key.properties
-          rm -f build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Virtual Gamepad - Latest Build"
+          draft: false
+          prerelease: false
+          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad.apk

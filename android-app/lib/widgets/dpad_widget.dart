@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:virtual_gamepad/theme.dart';
+import 'package:vgamepad/theme.dart';
 
 class DpadWidget extends StatefulWidget {
   final double size;

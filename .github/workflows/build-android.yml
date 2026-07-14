@@ -73,12 +73,13 @@ jobs:
       - name: Generate App Icons
         run: flutter pub run flutter_launcher_icons
 
-      # FIX: Clean overwrite instead of string injection to prevent runtime app crashes
+      # FIX: Updated to support clean modern Kotlin DSL (with isMinifyEnabled and compilerOptions block)
       - name: Inject Secure Build Configuration Script
         run: |
           cat << 'EOF' > android/app/build.gradle.kts
           import java.util.Properties
           import java.io.FileInputStream
+          import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
           plugins {
               id("com.android.application")
@@ -99,10 +100,6 @@ jobs:
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_1_8
                   targetCompatibility = JavaVersion.VERSION_1_8
-              }
-
-              kotlinOptions {
-                  jvmTarget = "1.8"
               }
 
               defaultConfig {
@@ -126,11 +123,16 @@ jobs:
 
               buildTypes {
                   getByName("release") {
-                      // Apply the production keystore verification configuration securely
                       signingConfig = signingConfigs.getByName("release")
-                      minifyEnabled = false
-                      shrinkResources = false
+                      isMinifyEnabled = false
+                      isShrinkResources = false
                   }
+              }
+          }
+
+          kotlin {
+              compilerOptions {
+                  jvmTarget.set(JvmTarget.JVM_1_8)
               }
           }
 

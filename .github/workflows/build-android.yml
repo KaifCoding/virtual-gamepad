@@ -17,13 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full history so we can read tags/commits accurately
+          fetch-depth: 0
 
       - name: Extract Version Name
         id: get_version
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          # Uses clean grep parsing to safely grab the version phrase
           VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
           
           if [ -z "$VERSION" ]; then
@@ -38,13 +37,19 @@ jobs:
         with:
           channel: stable
 
-      - name: Scaffold native android/ project (safe to re-run)
-        run: flutter create --platforms=android --org in.atomprod .
+      # 1. Scaffold with a safe layout placeholder first
+      - name: Scaffold native android/ project
+        run: flutter create --platforms=android --org com.atomprod .
+
+      # 2. Inject the compiler-escaped `in`.atomprod namespace directly into the Gradle configurations
+      - name: Patch Namespace and Application ID for Kotlin Keyword Compliance
+        run: |
+          sed -i 's/namespace = "com.atomprod.virtual_gamepad"/namespace = "`in`.atomprod.virtual_gamepad"/g' android/app/build.gradle.kts
+          sed -i 's/applicationId = "com.atomprod.virtual_gamepad"/applicationId = "in.atomprod.virtual_gamepad"/g' android/app/build.gradle.kts
 
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 
-      # 1. Safely place your production keystore file exactly where Flutter expects it
       - name: Decode Production Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -55,7 +60,6 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
 
-      # 2. Map your secrets into a standard key.properties file that standard Gradle setups look for by default
       - name: Configure Gradle Signing Properties
         run: |
           cat <<EOF > android/key.properties
@@ -71,7 +75,6 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      # 3. Compile the production APK passing your custom version layout via build arguments
       - name: Build release APK
         run: |
           flutter build apk --release --build-name=${{ env.VERSION }} --build-number=${{ github.run_number }}
@@ -87,7 +90,6 @@ jobs:
           gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
           gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
 
-      # 4. Clean up signing properties and keys completely
       - name: Clean up
         run: |
           rm -f android/app/release-key.jks android/key.properties

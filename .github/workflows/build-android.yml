@@ -51,23 +51,29 @@ jobs:
             exit 1
           fi
 
-          # The applicationId/namespace above only affects Gradle metadata.
-          # The actual MainActivity.kt source file (and its `package`
-          # declaration) also has to move to match, or Android can't find
-          # the launcher activity at runtime and crashes on open.
           MAIN_ACTIVITY=$(find android/app/src/main -type f \( -iname "MainActivity.kt" -o -iname "MainActivity.java" \) | head -n1)
           if [ -z "$MAIN_ACTIVITY" ]; then
             echo "Could not find MainActivity.kt/.java" >&2
             exit 1
           fi
+
           SRC_ROOT=$(echo "$MAIN_ACTIVITY" | sed -E 's#(android/app/src/main/(kotlin|java))/.*#\1#')
           EXT="${MAIN_ACTIVITY##*.}"
           NEW_DIR="$SRC_ROOT/in/atomprod/vgamepad"
+          NEW_PATH="$NEW_DIR/MainActivity.$EXT"
+
           mkdir -p "$NEW_DIR"
-          mv "$MAIN_ACTIVITY" "$NEW_DIR/MainActivity.$EXT"
-          sed -i -E "s/^package .*/package in.atomprod.vgamepad/" "$NEW_DIR/MainActivity.$EXT"
-          echo "MainActivity moved to: $NEW_DIR/MainActivity.$EXT"
-          cat "$NEW_DIR/MainActivity.$EXT"
+
+          # Only move if source and destination are different files
+          if [ "$(readlink -f "$MAIN_ACTIVITY")" != "$(readlink -f "$NEW_DIR")/MainActivity.$EXT" ]; then         
+          mv "$MAIN_ACTIVITY" "$NEW_PATH"
+          else
+            echo "MainActivity already at target location, skipping move"
+          fi
+
+          sed -i -E "s/^package .*/package in.atomprod.vgamepad/" "$NEW_PATH"
+          echo "MainActivity moved to: $NEW_PATH"
+          cat "$NEW_PATH"
 
       - name: Build release APK
         run: flutter build apk --release

@@ -36,16 +36,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-
-      # 1. Scaffold with a safe layout placeholder first
-      - name: Scaffold native android/ project
-        run: flutter create --platforms=android --org com.atomprod .
-
+          
       # 2. Inject the compiler-escaped `in`.atomprod namespace directly into the Gradle configurations
-      - name: Patch Namespace and Application ID for Kotlin Keyword Compliance
-        run: |
-          sed -i 's/namespace = "com.atomprod.virtual_gamepad"/namespace = "`in`.atomprod.virtual_gamepad"/g' android/app/build.gradle.kts
-          sed -i 's/applicationId = "com.atomprod.virtual_gamepad"/applicationId = "in.atomprod.virtual_gamepad"/g' android/app/build.gradle.kts
+      - name: Scaffold native android/ project
+        run: flutter create --platforms=android --org in.atomprod .
 
       - name: Apply our AndroidManifest (permissions + orientation)
         run: cp manifest-overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml

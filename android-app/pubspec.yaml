@@ -1,4 +1,4 @@
-name: virtual_gamepad
+name: vgamepad
 description: Turn your phone into a wireless Xbox-compatible gamepad for PC.
 publish_to: "none"
 version: 1.0.0+1

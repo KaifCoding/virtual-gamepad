@@ -93,13 +93,10 @@ jobs:
 
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad.apk
-
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
       - name: Upload Raw APK to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: "Virtual Gamepad - Latest Build"
-          draft: false
-          prerelease: false
-          files: android-app/build/app/outputs/flutter-apk/VirtualGamepad.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
+          gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber

@@ -34,7 +34,7 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      - name: Force application ID to in.atomprod.vgamepad (Gradle + source file)
+      - name: Force application ID to in.atomprod.vgamepad
         shell: bash
         run: |
           set -e
@@ -51,6 +51,12 @@ jobs:
             exit 1
           fi
 
+          # The applicationId/namespace above are plain Gradle string values,
+          # so "in" needs no special handling there. MainActivity.kt is real
+          # Kotlin source though, where "in" IS a reserved keyword (for...in,
+          # x in y) - its package line needs backtick-escaping, and it also
+          # has to physically live at the matching directory path or Android
+          # can't find the launcher activity at runtime and crashes on open.
           MAIN_ACTIVITY=$(find android/app/src/main -type f \( -iname "MainActivity.kt" -o -iname "MainActivity.java" \) | head -n1)
           if [ -z "$MAIN_ACTIVITY" ]; then
             echo "Could not find MainActivity.kt/.java" >&2
@@ -64,14 +70,21 @@ jobs:
 
           mkdir -p "$NEW_DIR"
 
-          # Only move if source and destination are different files
-          if [ "$(readlink -f "$MAIN_ACTIVITY")" != "$(readlink -f "$NEW_DIR")/MainActivity.$EXT" ]; then         
-          mv "$MAIN_ACTIVITY" "$NEW_PATH"
+          if [ "$(readlink -f "$MAIN_ACTIVITY")" != "$(readlink -f "$NEW_DIR")/MainActivity.$EXT" ]; then
+            mv "$MAIN_ACTIVITY" "$NEW_PATH"
           else
             echo "MainActivity already at target location, skipping move"
           fi
 
-          sed -i -E "s/^package .*/package in.atomprod.vgamepad/" "$NEW_PATH"
+          # .java files use "in" as a plain (non-reserved) package segment,
+          # no backticks. .kt files need `in` backtick-escaped since it's a
+          # reserved Kotlin keyword.
+          if [ "$EXT" = "kt" ]; then
+            sed -i -E "s/^package .*/package \`in\`.atomprod.vgamepad/" "$NEW_PATH"
+          else
+            sed -i -E "s/^package .*/package in.atomprod.vgamepad;/" "$NEW_PATH"
+          fi
+
           echo "MainActivity moved to: $NEW_PATH"
           cat "$NEW_PATH"
 

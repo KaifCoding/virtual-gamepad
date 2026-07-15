@@ -3,6 +3,7 @@ name: Build Windows Host
 on:
   push:
     branches: [main]
+    paths: 'version.json'
   workflow_dispatch:
 
 permissions:
@@ -20,20 +21,24 @@ jobs:
       - name: Extract Version Name
         id: get_version
         shell: pwsh
-        working-directory: . # OVERRIDE: Runs at root level so git can read the commit log safely
+        working-directory: .
         run: |
-          $commitMsg = git log -1 --pretty=%B
-          $versionMatch = [regex]::Match($commitMsg, 'v\d+\.\d+\.\d+(-\w+)?|\d+\.\d+\.\d+')
+          # 1. Read and parse the version string from your JSON file
+          $json = Get-Content -Raw -Path "version.json" | ConvertFrom-Json
+          $rawVersion = $json.version
           
-          if ($versionMatch.Success) {
-              $tag = $versionMatch.Value
+          # 2. Format the tag (ensures it has a 'v' prefix if it doesn't already)
+          if ($rawVersion -like 'v*') {
+              $tag = $rawVersion
           } else {
-              $tag = "v0.0.1"
+              $tag = "v$rawVersion"
           }
-      
+          
+          # 3. Create the clean and hyphenated versions for your files
           $cleanVersion = $tag -replace '^v', ''
           $fileVersion = $cleanVersion -replace '\.', '-'
           
+          # 4. Append to GITHUB_ENV exactly like before
           "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
           "FILE_VERSION=$fileVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -56,7 +61,7 @@ jobs:
       - name: Rename Windows Installer
         shell: pwsh
         run: |
-          Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "VirtualGamepadHost-${{ env.FILE_VERSION }}.exe"
+          Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "VirtualGamepadHost-v${{ env.FILE_VERSION }}.exe"
 
       # Uploads the raw, unzipped Setup installer directly to your target release zone
       - name: Upload Raw Installer to GitHub Releases
@@ -65,4 +70,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production stable binaries." 2>$null
-          gh release upload ${{ env.RELEASE_TAG }} dist/VirtualGamepadHost-${{ env.FILE_VERSION }}.exe --clobber
+          gh release upload ${{ env.RELEASE_TAG }} dist/VirtualGamepadHost-v${{ env.FILE_VERSION }}.exe --clobber

@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-    paths: ["android-app/**", ".github/workflows/build-android.yml"]
+    paths: 'version.json'
   workflow_dispatch:
 
 permissions:
@@ -22,20 +22,24 @@ jobs:
         with:
           channel: stable
       
-      - name: Extract Version Name
+      - name: Extract and Inject Version from JSON
         id: get_version
         run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)*|[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+          # 1. Read values from version.json
+          VERSION_NAME=$(jq -r '.version' ../version.json)
+          VERSION_CODE=${{github.run_number}}
           
-          if [ -z "$VERSION" ]; then
-            VERSION="latest"
-          fi
+          # Combine them into Flutter's format (e.g., 1.0.0+1)
+          FLUTTER_VERSION="${VERSION_NAME}+${VERSION_CODE}"
+          echo "Target Version: $FLUTTER_VERSION"
           
-          FILE_VERSION=$(echo "$VERSION" | tr '.' '-')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          # 2. Update the version line in pubspec.yaml inline
+          sed -i "s/^version: .*/version: $FLUTTER_VERSION/" pubspec.yaml
+          
+          # 3. Create your environment variables for later steps
+          FILE_VERSION=$(echo "$VERSION_NAME" | tr '.' '-')
+          echo "VERSION=$VERSION_NAME" >> $GITHUB_ENV
           echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
-
 
       - name: Scaffold native android/ project (safe to re-run)
         run: flutter create --platforms=android --org in.atomprod .
@@ -49,12 +53,51 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      - name: Force application ID to in.atomprod.vgamepad
+      # ================= NEW: DECODE AND CONFIGURE SIGNING KEY =================
+      - name: Decode Android Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+
+      - name: Configure Gradle Signing Properties
+        run: |
+          cat <<EOF > android/key.properties
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release-key.jks
+          EOF
+      # =========================================================================
+
+      - name: Force application ID and Inject Signing Configs
         shell: bash
         run: |
           set -e
           GRADLE_KTS="android/app/build.gradle.kts"
           GRADLE_GROOVY="android/app/build.gradle"
+          
+          # ---- DYNAMIC GRADLE GROOVY SIGNING INJECTION ----
+          if [ -f "$GRADLE_GROOVY" ]; then
+            # 1. Inject keystore parsing block at the very top of build.gradle
+            sed -i '1s/^/def keystoreProperties = new Properties()\ndef keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n/' "$GRADLE_GROOVY"
+            
+            # 2. Inject release configuration parameters safely into the signingConfigs block
+            sed -i '/signingConfigs {/a\
+                release {\
+                    keyAlias keystoreProperties["keyAlias"]\
+                    keyPassword keystoreProperties["keyPassword"]\
+                    storeFile file(keystoreProperties["storeFile"])\
+                    storePassword keystoreProperties["storePassword"]\
+                }' "$GRADLE_GROOVY"
+            
+            # 3. Swap out debug signing config for release signing config inside the release buildType block
+            sed -i '/buildTypes {/,/}/ {
+              /release {/,/}/ s/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/
+            }' "$GRADLE_GROOVY"
+          fi
+          # -----------------------------------------------------
+
           if [ -f "$GRADLE_KTS" ]; then
             sed -i -E 's/(applicationId\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
             sed -i -E 's/(namespace\s*=\s*)"[^"]*"/\1"in.atomprod.vgamepad"/' "$GRADLE_KTS"
@@ -66,12 +109,7 @@ jobs:
             exit 1
           fi
 
-          # The applicationId/namespace above are plain Gradle string values,
-          # so "in" needs no special handling there. MainActivity.kt is real
-          # Kotlin source though, where "in" IS a reserved keyword (for...in,
-          # x in y) - its package line needs backtick-escaping, and it also
-          # has to physically live at the matching directory path or Android
-          # can't find the launcher activity at runtime and crashes on open.
+          # MainActivity location management and escaping logic
           MAIN_ACTIVITY=$(find android/app/src/main -type f \( -iname "MainActivity.kt" -o -iname "MainActivity.java" \) | head -n1)
           if [ -z "$MAIN_ACTIVITY" ]; then
             echo "Could not find MainActivity.kt/.java" >&2
@@ -91,9 +129,6 @@ jobs:
             echo "MainActivity already at target location, skipping move"
           fi
 
-          # .java files use "in" as a plain (non-reserved) package segment,
-          # no backticks. .kt files need `in` backtick-escaped since it's a
-          # reserved Kotlin keyword.
           if [ "$EXT" = "kt" ]; then
             sed -i -E "s/^package .*/package \`in\`.atomprod.vgamepad/" "$NEW_PATH"
           else
@@ -101,14 +136,14 @@ jobs:
           fi
 
           echo "MainActivity moved to: $NEW_PATH"
-          cat "$NEW_PATH"
 
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-name=${{ env.VERSION }} --build-number=${{ github.run_number }}
 
       - name: Rename APK for release
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+
       - name: Upload Raw APK to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

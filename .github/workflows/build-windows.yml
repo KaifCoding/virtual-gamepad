@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Grants write token execution to safely declare GitHub Releases
+  contents: write 
 
 jobs:
   build:
@@ -27,7 +27,7 @@ jobs:
           $json = Get-Content -Raw -Path "version.json" | ConvertFrom-Json
           $rawVersion = $json.version
           
-          # 2. Format the tag (ensures it has a 'v' prefix if it doesn't already)
+          # 2. Format the tag cleanly (forces a 'v' prefix)
           if ($rawVersion -like 'v*') {
               $tag = $rawVersion
           } else {
@@ -38,7 +38,7 @@ jobs:
           $cleanVersion = $tag -replace '^v', ''
           $fileVersion = $cleanVersion -replace '\.', '-'
           
-          # 4. Append to GITHUB_ENV exactly like before
+          # 4. Append to GITHUB_ENV
           "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
           "FILE_VERSION=$fileVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -63,11 +63,10 @@ jobs:
         run: |
           Rename-Item -Path "dist/VirtualGamepadHost-Setup.exe" -NewName "VirtualGamepadHost-v${{ env.FILE_VERSION }}.exe"
 
-      # Uploads the raw, unzipped Setup installer directly to your target release zone
       - name: Upload Raw Installer to GitHub Releases
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production stable binaries." 2>$null
+          gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production stable binaries." || true
           gh release upload ${{ env.RELEASE_TAG }} dist/VirtualGamepadHost-v${{ env.FILE_VERSION }}.exe --clobber

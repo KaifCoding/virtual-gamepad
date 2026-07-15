@@ -36,9 +36,19 @@ jobs:
           # 2. Update the version line in pubspec.yaml inline
           sed -i "s/^version: .*/version: $FLUTTER_VERSION/" pubspec.yaml
           
-          # 3. Create your environment variables for later steps
-          FILE_VERSION=$(echo "$VERSION_NAME" | tr '.' '-')
-          echo "VERSION=$VERSION_NAME" >> $GITHUB_ENV
+          # 3. Create standardized variables (prepending 'v' to match Windows)
+          if [[ "$VERSION_NAME" == v* ]]; then
+            RELEASE_TAG="$VERSION_NAME"
+            CLEAN_VERSION="${VERSION_NAME#v}"
+          else
+            RELEASE_TAG="v$VERSION_NAME"
+            CLEAN_VERSION="$VERSION_NAME"
+          fi
+          
+          FILE_VERSION=$(echo "$CLEAN_VERSION" | tr '.' '-')
+          
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "VERSION_NAME=$CLEAN_VERSION" >> $GITHUB_ENV
           echo "FILE_VERSION=$FILE_VERSION" >> $GITHUB_ENV
 
       - name: Scaffold native android/ project (safe to re-run)
@@ -53,7 +63,7 @@ jobs:
       - name: Generate App Icons
         run: dart run flutter_launcher_icons
 
-      # ================= NEW: DECODE AND CONFIGURE SIGNING KEY =================
+      # ================= DECODE AND CONFIGURE SIGNING KEY =================
       - name: Decode Android Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -79,10 +89,8 @@ jobs:
           
           # ---- DYNAMIC GRADLE GROOVY SIGNING INJECTION ----
           if [ -f "$GRADLE_GROOVY" ]; then
-            # 1. Inject keystore parsing block at the very top of build.gradle
             sed -i '1s/^/def keystoreProperties = new Properties()\ndef keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n/' "$GRADLE_GROOVY"
             
-            # 2. Inject release configuration parameters safely into the signingConfigs block
             sed -i '/signingConfigs {/a\
                 release {\
                     keyAlias keystoreProperties["keyAlias"]\
@@ -91,7 +99,6 @@ jobs:
                     storePassword keystoreProperties["storePassword"]\
                 }' "$GRADLE_GROOVY"
             
-            # 3. Swap out debug signing config for release signing config inside the release buildType block
             sed -i '/buildTypes {/,/}/ {
               /release {/,/}/ s/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/
             }' "$GRADLE_GROOVY"
@@ -109,7 +116,6 @@ jobs:
             exit 1
           fi
 
-          # MainActivity location management and escaping logic
           MAIN_ACTIVITY=$(find android/app/src/main -type f \( -iname "MainActivity.kt" -o -iname "MainActivity.java" \) | head -n1)
           if [ -z "$MAIN_ACTIVITY" ]; then
             echo "Could not find MainActivity.kt/.java" >&2
@@ -138,15 +144,15 @@ jobs:
           echo "MainActivity moved to: $NEW_PATH"
 
       - name: Build release APK
-        run: flutter build apk --release --build-name=${{ env.VERSION }} --build-number=${{ github.run_number }}
+        run: flutter build apk --release --build-name=${{ env.VERSION_NAME }} --build-number=${{ github.run_number }}
 
       - name: Rename APK for release
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/VirtualGamepad-v${{ env.FILE_VERSION }}.apk
 
       - name: Upload Raw APK to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ env.VERSION }} --title "Virtual Gamepad ${{ env.VERSION }}" --notes "Production rolling build." || true
-          gh release upload ${{ env.VERSION }} build/app/outputs/flutter-apk/VirtualGamepad-${{ env.FILE_VERSION }}.apk --clobber
+          gh release create ${{ env.RELEASE_TAG }} --title "Virtual Gamepad ${{ env.RELEASE_TAG }}" --notes "Production rolling build." || true
+          gh release upload ${{ env.RELEASE_TAG }} build/app/outputs/flutter-apk/VirtualGamepad-v${{ env.FILE_VERSION }}.apk --clobber

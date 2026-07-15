@@ -3,7 +3,7 @@ name: Build Windows Host
 on:
   push:
     branches: [main]
-    paths: 'version.json'
+    paths: ['version.json']
   workflow_dispatch:
 
 permissions:
